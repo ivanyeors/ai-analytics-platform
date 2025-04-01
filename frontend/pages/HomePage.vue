@@ -138,6 +138,7 @@ import ChartPanel from '../components/ChartPanel.vue';
 import ChartVisualizer from '../components/ChartVisualizer.vue';
 import ChartActionsPanel from '../components/ChartActionsPanel.vue';
 import chartDataService from '../utils/chartDataService';
+import axios from 'axios';
 
 // Import icons
 import addIcon from '../assets/icons/add.svg';
@@ -301,10 +302,7 @@ const handleActionClick = (type) => {
 const startChatSession = (initialMessage) => {
   console.log("Starting new chat session with message:", initialMessage);
   
-  // Process chart-related queries
-  const isChartQuery = isChartRelatedQuery(initialMessage);
-  console.log("Is chart query?", isChartQuery);
-  
+  // Create new session
   const sessionTitle = initialMessage.length > 25 
     ? initialMessage.substring(0, 25) + '...' 
     : initialMessage;
@@ -316,27 +314,48 @@ const startChatSession = (initialMessage) => {
       { text: 'Hello! How can I help you with your data analysis today?', isUser: false, time: new Date() },
       { text: initialMessage, isUser: true, time: new Date() }
     ],
-    filters: []
+    filters: [],
+    isThinking: true
   };
 
   chatSessions.value.push(newSession);
   activeChatSession.value = chatSessions.value.length - 1;
   
-  // Handle chart-related queries immediately
-  if (isChartQuery) {
-    // Add slight delay to ensure UI updates first
+  // Process the message with AI or chart handling
+  const sessionId = chatSessions.value.length - 1;
+  
+  if (isChartRelatedQuery(initialMessage)) {
+    // Handle chart-related queries with existing logic
     setTimeout(() => {
       handleChartQuery(initialMessage);
-    }, 300);
+      chatSessions.value[activeChatSession.value].isThinking = false;
+    }, 1000);
   } else {
-    // For non-chart queries, add a generic response
-    setTimeout(() => {
+    // Send to AI backend
+    axios.post('/ai/chat', {
+      message: initialMessage,
+      sessionId: sessionId.toString()
+    })
+    .then(response => {
       updateChatSession(activeChatSession.value, { 
-        text: `I'll help you analyze "${initialMessage}". What specific insights are you looking for?`, 
+        text: response.data.response, 
         isUser: false, 
         time: new Date() 
       });
-    }, 300);
+    })
+    .catch(error => {
+      console.error('AI Service Error:', error);
+      updateChatSession(activeChatSession.value, { 
+        text: 'Sorry, I encountered an error processing your request.', 
+        isUser: false, 
+        time: new Date() 
+      });
+    })
+    .finally(() => {
+      if (activeChatSession.value !== null) {
+        chatSessions.value[activeChatSession.value].isThinking = false;
+      }
+    });
   }
 };
 
@@ -362,19 +381,47 @@ const updateChatSession = (sessionId, message) => {
     chatSessions.value[sessionId].isThinking = message.isThinking;
   }
   
-  // If message is from user, check if it's chart-related
-  if (message.isUser && isChartRelatedQuery(message.text)) {
-    // Add thinking state
+  // If message is from user, process with AI
+  if (message.isUser) {
+    // Set thinking state while waiting for AI response
     chatSessions.value[sessionId].isThinking = true;
     
-    // Simulating processing time
-    setTimeout(() => {
-      handleChartQuery(message.text);
-      chatSessions.value[sessionId].isThinking = false;
-    }, 1000);
+    // Check if it's chart-related (still use existing chart handling)
+    if (isChartRelatedQuery(message.text)) {
+      // Use existing chart handling logic
+      setTimeout(() => {
+        handleChartQuery(message.text);
+        chatSessions.value[sessionId].isThinking = false;
+      }, 1000);
+    } else {
+      // Send message to AI service
+      axios.post('/ai/chat', {
+        message: message.text,
+        sessionId: sessionId.toString()
+      })
+      .then(response => {
+        // Add AI response to chat session
+        chatSessions.value[sessionId].messages.push({
+          text: response.data.response,
+          isUser: false,
+          time: new Date()
+        });
+      })
+      .catch(error => {
+        console.error('AI Service Error:', error);
+        chatSessions.value[sessionId].messages.push({
+          text: 'Sorry, I encountered an error processing your request.',
+          isUser: false,
+          time: new Date()
+        });
+      })
+      .finally(() => {
+        chatSessions.value[sessionId].isThinking = false;
+      });
+    }
   }
   
-  // Check if message contains a chart (either single or multiple) and show the actions panel
+  // Check if message contains a chart (leave existing chart-related code)
   if (!message.isUser && (message.chart || message.multipleCharts)) {
     hasChartInMessages.value = true;
     // Show actions panel after a short delay
@@ -456,10 +503,24 @@ const createNewChatSession = () => {
   showChartPanel.value = false;
 };
 
-// Add the handleThinkingState method in the script section
+// Add the handleThinkingState method to manage thinking animation
 const handleThinkingState = (isThinking) => {
-  if (activeChatSession.value !== null) {
+  // Update thinking state in the active session
+  if (activeChatSession.value !== null && activeChatSession.value >= 0) {
     chatSessions.value[activeChatSession.value].isThinking = isThinking;
+  }
+  
+  // Trigger the thinking animation on the background ellipse
+  const ellipseElement = document.querySelector('.ellipse-gradient');
+  if (ellipseElement) {
+    if (isThinking) {
+      ellipseElement.classList.add('thinking-animation');
+    } else {
+      // Use a slight delay before removing the animation class for a smoother transition
+      setTimeout(() => {
+        ellipseElement.classList.remove('thinking-animation');
+      }, 300);
+    }
   }
 };
 
@@ -469,7 +530,7 @@ const toggleArrow = () => {
   sidebarCollapsed.value = !sidebarCollapsed.value;
 };
 
-// Determine if a query is related to chart visualization
+// Define the isChartRelatedQuery function to maintain consistency
 const isChartRelatedQuery = (query) => {
   if (!query) return false;
   
@@ -498,7 +559,7 @@ const isChartRelatedQuery = (query) => {
 
 // Handle chart-related queries
 const handleChartQuery = (query) => {
-  console.log("Processing chart query:", query);
+  console.log("Processing chart query in HomePage:", query);
   
   if (!activeChatSession.value && activeChatSession.value !== 0) {
     console.error("No active chat session");
@@ -1646,7 +1707,7 @@ onMounted(() => {
 }
 
 .chat-box-with-collapsed-charts {
-  width: calc(100% - 60px) !important; /* Full width minus collapsed chart panel width */
+  width: calc(100% - 45px) !important; /* Full width minus collapsed chart panel width */
 }
 
 @media (max-width: 767px) {

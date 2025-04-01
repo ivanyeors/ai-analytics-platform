@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import HomePage from '../pages/HomePage.vue'
 import AnalyticsDashboard from '../pages/AnalyticsDashboard.vue'
+import ApiTestPage from '../src/ApiTestPage.vue'
 
 const routes = [
   {
@@ -17,6 +18,14 @@ const routes = [
     component: AnalyticsDashboard,
     meta: {
       title: 'Analytics Dashboard'
+    }
+  },
+  {
+    path: '/api-test',
+    name: 'ApiTest',
+    component: ApiTestPage,
+    meta: {
+      title: 'API Connection Test'
     }
   },
   // Additional routes can be added here

@@ -1,201 +1,118 @@
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
-const { SpacetimeDBClient } = require('spacetimedb-sdk');
+const dotenv = require('dotenv');
+const path = require('path');
 
-// Create Express app
-const app = express();
-const port = process.env.PORT || 3001;
+// Display debug information
+console.log('Starting API server...');
+console.log('Current directory:', __dirname);
+console.log('Node version:', process.version);
 
-// Middleware
-app.use(cors());
-app.use(bodyParser.json());
+// Load environment variables from the backend root directory
+const envPath = path.join(__dirname, '..', '.env');
+console.log('Loading environment from:', envPath);
+const dotenvResult = dotenv.config({ path: envPath });
 
-// Create SpacetimeDB client
-const spacetimeClient = new SpacetimeDBClient('localhost:3000', {
-  moduleName: 'analytics-module'
-});
-
-// Connect to SpacetimeDB
-let connected = false;
-
-async function connectToSpacetimeDB() {
-  try {
-    await spacetimeClient.connect();
-    console.log('Connected to SpacetimeDB');
-    
-    // Subscribe to data changes
-    spacetimeClient.subscribe('DataPoint');
-    spacetimeClient.subscribe('Category');
-    
-    connected = true;
-  } catch (error) {
-    console.error('Failed to connect to SpacetimeDB:', error);
-    // Retry connection after a delay
-    setTimeout(connectToSpacetimeDB, 5000);
-  }
+if (dotenvResult.error) {
+  console.error('Error loading .env file:', dotenvResult.error);
+} else {
+  console.log('.env file loaded successfully');
 }
 
-connectToSpacetimeDB();
+// Import routes
+console.log('Importing routes...');
+try {
+  const aiRoutes = require('../routes/ai');
+  console.log('Routes imported successfully');
 
-// API Routes
+  // Create Express app
+  const app = express();
+  const port = process.env.PORT || 3001;
 
-// Get all data points
-app.get('/api/data-points', async (req, res) => {
-  if (!connected) {
-    return res.status(503).json({ error: 'Database connection not established' });
-  }
-  
-  try {
-    const dataPoints = spacetimeClient.getSubscribedRows('DataPoint');
-    res.json(dataPoints);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+  console.log('Configured port:', port);
 
-// Get all categories
-app.get('/api/categories', async (req, res) => {
-  if (!connected) {
-    return res.status(503).json({ error: 'Database connection not established' });
-  }
-  
-  try {
-    const categories = spacetimeClient.getSubscribedRows('Category');
-    res.json(categories);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+  // CORS configuration
+  const corsOptions = {
+    origin: ['http://localhost:8080', 'http://localhost:3000', 'http://localhost:5173', 'http://127.0.0.1:8080', 'http://127.0.0.1:3000', 'http://127.0.0.1:5173'],
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    credentials: true,
+    optionsSuccessStatus: 204
+  };
 
-// Add a new data point
-app.post('/api/data-points', async (req, res) => {
-  if (!connected) {
-    return res.status(503).json({ error: 'Database connection not established' });
-  }
-  
-  try {
-    const { category, value } = req.body;
-    
-    if (!category || value === undefined) {
-      return res.status(400).json({ error: 'Category and value are required' });
-    }
-    
-    const id = await spacetimeClient.call('add_data_point', [category, value]);
-    res.status(201).json({ id });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+  // Middleware
+  app.use(cors(corsOptions));
+  app.use(bodyParser.json());
 
-// Update a data point
-app.put('/api/data-points/:id', async (req, res) => {
-  if (!connected) {
-    return res.status(503).json({ error: 'Database connection not established' });
-  }
-  
-  try {
-    const id = parseInt(req.params.id);
-    const { category, value } = req.body;
-    
-    const success = await spacetimeClient.call('update_data_point', [id, category, value]);
-    
-    if (success) {
-      res.json({ success: true });
-    } else {
-      res.status(404).json({ error: 'Data point not found' });
-    }
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+  // Log all requests
+  app.use((req, res, next) => {
+    console.log(`${new Date().toISOString()} [${req.method}] ${req.url}`);
+    next();
+  });
 
-// Delete a data point
-app.delete('/api/data-points/:id', async (req, res) => {
-  if (!connected) {
-    return res.status(503).json({ error: 'Database connection not established' });
-  }
-  
-  try {
-    const id = parseInt(req.params.id);
-    
-    const success = await spacetimeClient.call('delete_data_point', [id]);
-    
-    if (success) {
-      res.json({ success: true });
-    } else {
-      res.status(404).json({ error: 'Data point not found' });
-    }
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+  // Register routes
+  app.use('/api/ai', aiRoutes);
 
-// Add or update a category
-app.post('/api/categories', async (req, res) => {
-  if (!connected) {
-    return res.status(503).json({ error: 'Database connection not established' });
-  }
-  
-  try {
-    const { name, description, color } = req.body;
-    
-    if (!name) {
-      return res.status(400).json({ error: 'Category name is required' });
-    }
-    
-    await spacetimeClient.call('add_category', [
-      name, 
-      description || `Category ${name}`,
-      color || '#1f77b4'
-    ]);
-    
-    res.status(201).json({ success: true });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+  // Basic health check endpoint
+  app.get('/health', (req, res) => {
+    res.json({ status: 'ok' });
+  });
 
-// Delete a category
-app.delete('/api/categories/:name', async (req, res) => {
-  if (!connected) {
-    return res.status(503).json({ error: 'Database connection not established' });
-  }
-  
-  try {
-    const name = req.params.name;
-    const { reassignTo } = req.query;
-    
-    const success = await spacetimeClient.call('delete_category', [name, reassignTo]);
-    
-    if (success) {
-      res.json({ success: true });
-    } else {
-      res.status(404).json({ error: 'Category not found' });
-    }
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+  // Root endpoint for easy testing
+  app.get('/', (req, res) => {
+    res.json({ 
+      message: 'AI Analytics API server is running',
+      endpoints: {
+        health: '/health',
+        chat: '/api/ai/chat',
+        stream: '/api/ai/chat/stream'
+      }
+    });
+  });
 
-// Generate sample data
-app.post('/api/generate-sample-data', async (req, res) => {
-  if (!connected) {
-    return res.status(503).json({ error: 'Database connection not established' });
-  }
-  
-  try {
-    const { numPoints } = req.body;
-    
-    await spacetimeClient.call('generate_sample_data', [numPoints || 50]);
-    
-    res.json({ success: true });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+  // Error handling middleware
+  app.use((err, req, res, next) => {
+    console.error('Server error:', err);
+    res.status(err.status || 500).json({
+      message: err.message || 'Internal server error',
+      error: process.env.NODE_ENV === 'development' ? err : {}
+    });
+  });
 
-// Start the server
-app.listen(port, () => {
-  console.log(`API bridge listening on port ${port}`);
-}); 
+  // Function to start the server with port fallback
+  const startServer = (initialPort) => {
+    console.log(`Attempting to start server on port ${initialPort}...`);
+    
+    // Explicitly binding to 0.0.0.0 to listen on all available network interfaces
+    const server = app.listen(initialPort, '0.0.0.0')
+      .on('listening', () => {
+        const addr = server.address();
+        console.log('Server address:', addr);
+        const actualPort = addr.port;
+        console.log(`API server listening on all interfaces (0.0.0.0) on port ${actualPort}`);
+        console.log(`API routes available at: http://localhost:${actualPort}/api/ai/chat`);
+        
+        // If we're using a different port than expected, provide instructions
+        if (actualPort !== port) {
+          console.log('\n⚠️  Note: Server started on a different port than configured!');
+          console.log(`If using Vue.js frontend, update the proxy in vue.config.js to target: 'http://localhost:${actualPort}'`);
+        }
+      })
+      .on('error', (err) => {
+        if (err.code === 'EADDRINUSE') {
+          console.log(`⚠️  Port ${initialPort} is already in use, trying alternative port...`);
+          // Try a different port (incrementing by 10 to avoid conflicts)
+          startServer(initialPort + 10);
+        } else {
+          console.error('Failed to start server:', err);
+          process.exit(1);
+        }
+      });
+  };
+
+  // Start the server with the configured port
+  startServer(port);
+} catch (error) {
+  console.error('Fatal error during server initialization:', error);
+  process.exit(1);
+} 

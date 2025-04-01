@@ -97,6 +97,24 @@
 import { ref, watch, nextTick, computed, onMounted, watchEffect } from 'vue';
 import ChartVisualizer from './ChartVisualizer.vue';
 import StaticMedicalChart from './StaticMedicalChart.vue';
+import axios from 'axios';
+
+// Add axios interceptors for debugging
+axios.interceptors.request.use(config => {
+  console.log('Axios Request:', config);
+  return config;
+}, error => {
+  console.error('Axios Request Error:', error);
+  return Promise.reject(error);
+});
+
+axios.interceptors.response.use(response => {
+  console.log('Axios Response:', response);
+  return response;
+}, error => {
+  console.error('Axios Response Error:', error);
+  return Promise.reject(error);
+});
 
 // Reactive state
 const chatInput = ref('');
@@ -128,8 +146,8 @@ const displayMessages = computed(() => {
     : localMessages.value;
 });
 
-// Emit events
-const emit = defineEmits(['chat-started', 'message-sent', 'thinking-state', 'chart-displayed']);
+// Update emits to include message-updated
+const emit = defineEmits(['chat-started', 'message-sent', 'message-updated', 'thinking-state', 'chart-displayed']);
 
 // Props
 const props = defineProps({
@@ -251,7 +269,7 @@ watch(() => props.messages, (newMessages, oldMessages) => {
   }
 }, { deep: true });
 
-// Methods
+// Update the sendMessage function to use our streaming response
 const sendMessage = () => {
   if (!chatInput.value.trim()) return;
   
@@ -294,44 +312,188 @@ const sendMessage = () => {
     emit('thinking-state', true);
   }
   
-  // Simulate AI response (in a real app, this would call an API)
-  setTimeout(() => {
-    // Create a smooth transition by waiting briefly before hiding the thinking indicator
+  // Check if this is a chart-related query first
+  if (isChartRelatedQuery(userQuery)) {
+    // Use existing chart handling logic
     setTimeout(() => {
-      isTyping.value = false;
-      
-      // Emit end of thinking state
-      if (props.sessionId !== null) {
-        emit('message-sent', props.sessionId, { isThinking: false });
-        emit('thinking-state', false);
-      }
-    }, 300); // Short delay for smooth transition
+      handleChartQuery(userQuery);
+    }, 1500);
+  } else {
+    // Use streaming response for better UX
+    streamResponse(userQuery)
+      .finally(() => {
+        // Scroll to bottom after streaming completes
+        scrollToBottom();
+      });
+  }
+};
+
+// Stream response from OpenAI
+const streamResponse = async (prompt) => {
+  try {
+    console.log('Starting streaming response for query:', prompt);
     
-    let response = `I'm analyzing your query about "${userQuery}"`;
+    // Create a fetch request to streaming endpoint
+    const response = await fetch('/api/ai/chat/stream', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        message: prompt,
+        sessionId: props.sessionId !== null ? props.sessionId.toString() : 'local-session'
+      })
+    });
     
-    // Add context based on active filters
-    if (activeFilters.value.length > 0) {
-      response += ` in the context of ${activeFilters.value.join(', ')}`;
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
     
+    // Create empty AI response message
     const aiMessage = {
-      text: response,
+      text: '',
       isUser: false,
       time: new Date(),
-      afterThinking: true // Mark this message as occurring after thinking
+      afterThinking: true,
+      streaming: true
     };
     
+    // Add the empty message to display
     if (props.sessionId !== null) {
-      // If we're in a session, emit it to the parent
       emit('message-sent', props.sessionId, aiMessage);
     } else {
-      // Otherwise store locally
       localMessages.value.push(aiMessage);
     }
     
-    // Scroll to bottom after adding new message
+    // Get references to update the message
+    const messageIndex = props.sessionId !== null ? -1 : localMessages.value.length - 1;
+    
+    // Hide typing indicator once streaming starts
+    isTyping.value = false;
+    
+    // Emit end of thinking state
+    if (props.sessionId !== null) {
+      emit('message-sent', props.sessionId, { isThinking: false });
+      emit('thinking-state', false);
+    }
+    
+    // Process the stream
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder('utf-8');
+    let streamedText = '';
+    
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      
+      // Decode the chunk and append to message
+      const chunk = decoder.decode(value, { stream: true });
+      streamedText += chunk;
+      
+      // Update the message text
+      if (props.sessionId !== null) {
+        // For session-based chats, emit update event
+        emit('message-updated', props.sessionId, {
+          text: streamedText,
+          isUser: false,
+          time: new Date(),
+          afterThinking: true
+        });
+      } else if (messageIndex >= 0) {
+        // For local messages, update directly
+        localMessages.value[messageIndex].text = streamedText;
+      }
+      
+      // Scroll to keep up with streaming text
+      scrollToBottom();
+    }
+    
+    console.log('Stream completed');
+    
+  } catch (error) {
+    console.error('Streaming error:', error);
+    isTyping.value = false;
+    
+    // Emit end of thinking state
+    if (props.sessionId !== null) {
+      emit('message-sent', props.sessionId, { isThinking: false });
+      emit('thinking-state', false);
+    }
+    
+    // Show error message
+    const errorMessage = {
+      text: 'Sorry, I encountered an error streaming the response. Please try again.',
+      isUser: false,
+      time: new Date(),
+      afterThinking: true
+    };
+    
+    if (props.sessionId !== null) {
+      emit('message-sent', props.sessionId, errorMessage);
+    } else {
+      localMessages.value.push(errorMessage);
+    }
+  }
+};
+
+// Helper function to check if a query is chart-related
+const isChartRelatedQuery = (query) => {
+  const chartKeywords = [
+    'chart', 'graph', 'plot', 'visualization', 'viz', 'visual',
+    'bar', 'line', 'pie', 'scatter', 'trend', 'compare'
+  ];
+  
+  return chartKeywords.some(keyword => 
+    query.toLowerCase().includes(keyword)
+  );
+};
+
+// Handle chart-related queries
+const handleChartQuery = (query) => {
+  console.log("Processing chart query in ChatBox:", query);
+  
+  // Hide typing indicator
+  isTyping.value = false;
+  
+  // Emit end of thinking state
+  if (props.sessionId !== null) {
+    emit('message-sent', props.sessionId, { isThinking: false });
+    emit('thinking-state', false);
+  }
+  
+  // Create chart response
+  const chartResponse = {
+    text: `Here's a chart based on your query: "${query}"`,
+    isUser: false,
+    time: new Date(),
+    afterThinking: true,
+    chart: {
+      type: 'bar'
+    }
+  };
+  
+  if (props.sessionId !== null) {
+    emit('message-sent', props.sessionId, chartResponse);
+  } else {
+    localMessages.value.push(chartResponse);
+  }
+  
+  // Add explanatory message after the chart
+  setTimeout(() => {
+    const explanationMessage = {
+      text: "This chart shows the percentage of patients diagnosed with different medical conditions in our sample population. Heart disease is the most prevalent at 42%, followed closely by diabetes at 38%.",
+      isUser: false,
+      time: new Date()
+    };
+    
+    if (props.sessionId !== null) {
+      emit('message-sent', props.sessionId, explanationMessage);
+    } else {
+      localMessages.value.push(explanationMessage);
+    }
+    
     scrollToBottom();
-  }, 1500);
+  }, 1000);
 };
 
 const toggleFilter = (filterId) => {

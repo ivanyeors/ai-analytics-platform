@@ -17,6 +17,23 @@ app.use(pinia)
 app.use(router)
 
 // Configure axios
-axios.defaults.baseURL = 'http://localhost:3001/api'
+axios.defaults.baseURL = '/api'
+
+// Add axios interceptors for debugging
+axios.interceptors.request.use(config => {
+  console.log('Axios Request:', config);
+  return config;
+}, error => {
+  console.error('Axios Request Error:', error);
+  return Promise.reject(error);
+});
+
+axios.interceptors.response.use(response => {
+  console.log('Axios Response:', response);
+  return response;
+}, error => {
+  console.error('Axios Response Error:', error);
+  return Promise.reject(error);
+});
 
 app.mount('#app') 

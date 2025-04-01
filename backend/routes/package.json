@@ -1,0 +1,9 @@
+{
+  "name": "analytics-api-routes",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "express": "^4.18.2",
+    "openai": "^4.28.0"
+  }
+} 
