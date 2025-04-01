@@ -1,0 +1,37 @@
+/* Global styles */
+:root {
+  --primary-color: #257BDF;
+  --secondary-color: #2CE4CF;
+  --gradient-start: #2CE4CF;
+  --gradient-end: #0076B4;
+  --text-primary: #232323;
+  --text-secondary: #676767;
+  --text-tertiary: #777777;
+  --background-primary: #FFFFFF;
+  --background-secondary: #F7F7F7;
+  --background-card: #EBEBEB;
+  --radius-default: 13px;
+  --radius-pill: 384px;
+}
+
+/* Transitions */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+.slide-up-enter-active,
+.slide-up-leave-active {
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.slide-up-enter-from,
+.slide-up-leave-to {
+  transform: translateY(20px);
+  opacity: 0;
+} 
