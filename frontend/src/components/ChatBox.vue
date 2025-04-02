@@ -526,7 +526,7 @@ const handleChartQuery = async (query) => {
   
   try {
     // Call the backend chart generation endpoint with provider
-    const response = await axios.post('/api/ai/chart', {
+    const response = await axios.post('/ai/chart', {
       query: query,
       sessionId: props.sessionId !== null ? props.sessionId.toString() : 'local-session',
       provider: selectedProvider.value // Add provider to request

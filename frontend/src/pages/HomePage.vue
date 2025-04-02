@@ -132,13 +132,13 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, watch, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import ChatBox from '../components/ChatBox.vue';
 import ChartPanel from '../components/ui/chart/ChartPanel.vue';
 import ChartVisualizer from '../components/ui/chart/ChartVisualizer.vue';
 import ChartActionsPanel from '../components/ui/chart/ChartActionsPanel.vue';
-import chartDataService from '../utils/chartDataService';
+import chartDataService, { validateChartData } from '../utils/chartDataService';
 import axios from 'axios';
 
 // Import icons
@@ -536,34 +536,21 @@ const toggleArrow = () => {
   sidebarCollapsed.value = !sidebarCollapsed.value;
 };
 
-// Define the isChartRelatedQuery function to maintain consistency
-const isChartRelatedQuery = (query) => {
-  if (!query) return false;
-  
+// Check if the message is about charts/graphs
+function isChartRelatedQuery(message) {
   const chartKeywords = [
-    'chart', 'graph', 'plot', 'visualization', 'viz', 'dashboard',
-    'show me', 'display', 'create a', 'generate', 'demo', 'example',
-    'bar', 'line', 'pie', 'scatter', 'area', 'histogram', 'map',
-    'sales', 'trend', 'compare', 'analysis', 'metric', 'performance',
-    'visual', 'report'
+    'chart', 'graph', 'plot', 'visualization', 
+    'visualize', 'visualise', 'bar chart', 'line chart',
+    'stats', 'statistics', 'data viz', 'percentage', 
+    'compare', 'comparison', 'trend', 'distribution'
   ];
   
-  // Use more robust detection
-  query = query.toLowerCase();
-  // Check for direct keyword matches
-  const hasDirectMatch = chartKeywords.some(keyword => query.includes(keyword));
-  // Check for phrases like "show the sales data" or "create visualization"
-  const hasVisualizationContext = (
-    (query.includes('show') && query.includes('data')) ||
-    (query.includes('create') && query.includes('visual')) ||
-    (query.includes('generate') && query.includes('report')) ||
-    (query.includes('make') && query.includes('chart'))
+  return chartKeywords.some(keyword => 
+    message.toLowerCase().includes(keyword.toLowerCase())
   );
-  
-  return hasDirectMatch || hasVisualizationContext;
-};
+}
 
-// Handle chart-related queries
+// Handle chart-related queries from direct chart button
 const handleChartQuery = (query) => {
   console.log("Processing chart query in HomePage:", query);
   
@@ -576,112 +563,139 @@ const handleChartQuery = (query) => {
   // Get the AI provider from the current session or use the default
   const provider = chatSessions.value[sessionId].provider || selectedProvider.value;
   
-  // Check if we should call the chart API instead of using demo data
-  const shouldUseApi = true; // Change this to toggle between API and demo chart
+  // Set the session to thinking state
+  chatSessions.value[sessionId].isThinking = true;
   
-  if (shouldUseApi) {
-    // Set the session to thinking state
-    chatSessions.value[sessionId].isThinking = true;
+  // Call the backend chart generation API with provider
+  axios.post('/ai/chart', {
+    query: query,
+    sessionId: sessionId.toString(),
+    provider: provider // Include selected provider
+  })
+  .then(response => {
+    if (response.data.success && response.data.chartData) {
+      const apiChartData = response.data.chartData;
+      
+      // Format chart data for the new ChartVisualizer
+      const chartData = {
+        data: apiChartData.data || [],
+        series: apiChartData.series || ['value'],
+        indexKey: apiChartData.indexKey || 'category',
+        valueKey: apiChartData.valueKey || 'value',
+        labelKey: apiChartData.labelKey || 'label',
+        title: apiChartData.title || 'Chart Visualization'
+      };
+      
+      // Add the chart response to messages
+      updateChatSession(sessionId, {
+        text: apiChartData.explanation || `Here's a chart based on your query: "${query}"`,
+        isUser: false,
+        time: new Date(),
+        chart: {
+          type: apiChartData.chartType || 'bar',
+          chartData: chartData,
+          title: apiChartData.title || 'Chart Visualization',
+          curveType: apiChartData.curveType || 'linear',
+          isStacked: apiChartData.isStacked || false
+        }
+      });
+    } else {
+      throw new Error('Invalid chart data received from server');
+    }
+  })
+  .catch(error => {
+    console.error("Error generating chart:", error);
     
-    // Call the backend chart generation API with provider
-    axios.post('/api/ai/chart', {
-      query: query,
+    // Try using the regular chat API and extract chart data from the response
+    console.log("Attempting to get chart data via regular chat API");
+    
+    // Get conversation history for this session
+    const conversationHistory = chatSessions.value[sessionId].messages
+      .filter(msg => !msg.isDeleted)
+      .map(msg => ({
+        role: msg.isUser ? 'user' : 'assistant', 
+        content: msg.text
+      }));
+      
+    // Prepare the special prompt for chart data
+    const chartPrompt = `Generate a chart visualization from this data: ${query}. 
+    Include numerical data points with percentages or values where relevant. 
+    Format your response clearly with categories and their corresponding values.`;
+    
+    // Call the regular chat API with our chart prompt
+    axios.post('/ai/chat', {
+      message: chartPrompt,
       sessionId: sessionId.toString(),
-      provider: provider // Include selected provider
+      conversationHistory: [...conversationHistory, { role: 'user', content: query }],
+      provider: provider
     })
     .then(response => {
-      if (response.data.success && response.data.chartData) {
-        const chartData = response.data.chartData;
+      if (response.data && response.data.message) {
+        // Try to extract chart data from the text response
+        const extractedChartData = chartDataService.extractChartDataFromText(response.data.message);
         
-        // Add the chart response to messages
-        updateChatSession(sessionId, {
-          text: chartData.explanation || `Here's a chart based on your query: "${query}"`,
-          isUser: false,
-          time: new Date(),
-          chart: {
-            type: chartData.chartType || 'bar',
-            data: chartData.data || [],
-            title: chartData.title || 'Chart Visualization',
-            options: chartData.options || {}
-          }
-        });
+        if (extractedChartData && extractedChartData.data && extractedChartData.data.length > 0) {
+          // Format chart data for the new ChartVisualizer
+          const chartData = {
+            data: extractedChartData.data || [],
+            series: extractedChartData.series || ['value'],
+            indexKey: extractedChartData.indexKey || 'category',
+            valueKey: extractedChartData.valueKey || 'value',
+            labelKey: extractedChartData.labelKey || 'label',
+            title: extractedChartData.title || 'Chart Visualization'
+          };
+          
+          // Update the chat session with the chart
+          updateChatSession(sessionId, {
+            text: extractedChartData.explanation || `Here's a chart based on your query: "${query}"`,
+            isUser: false,
+            time: new Date(),
+            chart: {
+              type: extractedChartData.type || 'bar',
+              chartData: chartData,
+              title: extractedChartData.title || 'Chart from Text',
+              curveType: extractedChartData.curveType || 'linear',
+              isStacked: extractedChartData.isStacked || false
+            }
+          });
+        } else {
+          throw new Error('Failed to extract usable chart data from AI response');
+        }
       } else {
-        throw new Error('Invalid chart data received from server');
+        throw new Error('No message in AI response');
       }
     })
-    .catch(error => {
-      console.error("Error generating chart:", error);
+    .catch(secondError => {
+      console.error("Secondary error in chart extraction:", secondError);
       
-      // Fall back to static demo chart if API fails
+      // Final fallback to static demo chart if all else fails
+      const sampleData = chartDataService.getSampleData();
+      
+      // Format chart data for the new ChartVisualizer
+      const chartData = {
+        data: sampleData.data || [],
+        series: ['value'],
+        indexKey: 'category',
+        valueKey: 'value',
+        labelKey: 'category',
+        title: 'Sample Medical Data'
+      };
+      
       updateChatSession(sessionId, { 
-        text: "I encountered an error generating the chart. Here's a sample chart instead:",
+        text: "I encountered errors generating the chart. Here's a sample chart instead:",
         isUser: false,
         time: new Date(),
         chart: {
           type: 'bar',
-          data: []
+          chartData: chartData,
+          title: 'Sample Medical Data'
         }
       });
     })
     .finally(() => {
       chatSessions.value[sessionId].isThinking = false;
     });
-  } else {
-    // Check if this is a special demo query about charts
-    const isDemo = (query.toLowerCase().includes('chart') || 
-                   query.toLowerCase().includes('graph') || 
-                   query.toLowerCase().includes('plot') || 
-                   query.toLowerCase().includes('show me') || 
-                   query.toLowerCase().includes('demo') || 
-                   query.toLowerCase().includes('example'));
-    
-    if (isDemo) {
-      console.log("Detected chart demo/example query");
-        
-      // Send a simple bar chart that will trigger our static chart component
-      updateChatSession(sessionId, { 
-        text: "Here's a chart showing the prevalence of medical conditions:",
-        isUser: false,
-        time: new Date(),
-        chart: {
-          type: 'bar',
-          // Simple data object - this won't actually be used by the static chart
-          // but is needed to maintain compatibility with the existing structure
-          data: []
-        }
-      });
-      
-      // Add a follow-up explanation message
-      setTimeout(() => {
-        updateChatSession(sessionId, { 
-          text: "This chart shows the percentage of patients diagnosed with different medical conditions in our sample population. Heart disease is the most prevalent at 42%, followed closely by diabetes at 38%.",
-          isUser: false,
-          time: new Date()
-        });
-      }, 1000);
-    } else {
-      // Process normal chart-related queries (non-demo)
-      // For simplicity, always return a bar chart that will trigger our static component
-      updateChatSession(sessionId, { 
-        text: `Here's a chart showing medical condition prevalence:`,
-        isUser: false,
-        time: new Date(),
-        chart: {
-          type: 'bar',
-          data: []
-        }
-      });
-      
-      // Follow up with analysis in a separate message
-      setTimeout(() => {
-        updateChatSession(sessionId, { 
-          text: `Analysis: The data shows variation in prevalence across different medical conditions, with heart disease and diabetes being the most common in our sample population. Is there a specific condition you'd like more information about?`, 
-          isUser: false, 
-          time: new Date() 
-        });
-      }, 800);
-    }
-  }
+  });
 };
 
 // Helper function to generate insights based on chart type and data - simplified to only handle bar charts
@@ -706,13 +720,25 @@ const handleAddChart = ({ type }) => {
   // Get sample data for this chart type
   const { data, options } = chartDataService.getSampleData(type);
   
+  // Format data for new chart visualizer
+  const chartData = {
+    data: data,
+    series: ['value'],
+    indexKey: 'category',
+    valueKey: 'value',
+    labelKey: 'category',
+    title: options?.title || 'Sample Chart'
+  };
+  
   // Add new chart to chart panel
   chartPanelData.value.charts.push({
     type,
-    title: options.title,
-    data,
-    options,
-    showCode: false
+    title: options?.title || 'Sample Chart',
+    chartData: chartData,
+    loading: false,
+    error: '',
+    curveType: 'linear',
+    isStacked: false
   });
 };
 
@@ -726,9 +752,11 @@ const handleViewCharts = () => {
       .map(msg => ({
         type: msg.chart.type,
         title: msg.chart.title,
-        data: msg.chart.data,
-        options: msg.chart.options,
-        showCode: false
+        chartData: msg.chart.chartData,
+        loading: false,
+        error: '',
+        curveType: msg.chart.curveType || 'linear',
+        isStacked: msg.chart.isStacked || false
       }));
     
     if (charts.length > 0) {

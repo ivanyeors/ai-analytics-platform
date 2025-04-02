@@ -201,7 +201,7 @@ export default {
       try {
         console.log('Using fallback API endpoint...');
         
-        const response = await axios.post('/api/ai/chat', {
+        const response = await axios.post('/ai/chat', {
           message: prompt,
           conversationHistory: this.conversationHistory
         });
