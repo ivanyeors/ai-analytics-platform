@@ -7,7 +7,7 @@
 </template>
 
 <script setup>
-import ApiTest from '../components/ApiTest.vue';
+import ApiTest from './components/ApiTest.vue';
 </script>
 
 <style scoped>

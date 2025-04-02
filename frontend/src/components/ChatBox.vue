@@ -20,13 +20,11 @@
           
           <!-- Chart visualization inside the chat bubble -->
           <div v-if="message.chart" class="chat-chart-container">
-            <StaticMedicalChart v-if="message.chart.type === 'bar'" />
             <ChartVisualizer
-              v-else
               :chartType="message.chart.type"
               :data="message.chart.data"
               :title="message.chart.title"
-              :options="message.chart.options"
+              :options="message.chart.options || {}"
               :showCode="false"
               compact-mode="true"
             />
@@ -70,6 +68,54 @@
           v-model="chatInput"
           @keyup.enter="sendMessage"
         />
+        <div class="ai-dropdown-container">
+          <button 
+            class="ai-dropdown-toggle" 
+            @click="toggleAIDropdown"
+            :class="{ 'active': showAIDropdown }"
+          >
+            <span class="current-provider-icon">
+              <svg v-if="selectedProvider === 'openai'" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2c5.5 0 10 4.5 10 10s-4.5 10-10 10S2 17.5 2 12 6.5 2 12 2Z"></path>
+                <path d="M12 14c1.7 0 3-1.3 3-3s-1.3-3-3-3-3 1.3-3 3 1.3 3 3 3Z"></path>
+              </svg>
+              <svg v-else xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path>
+              </svg>
+            </span>
+            <svg class="dropdown-arrow" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="m6 9 6 6 6-6"/>
+            </svg>
+          </button>
+          
+          <div class="ai-dropdown-menu" v-if="showAIDropdown">
+            <div 
+              class="ai-dropdown-item"
+              :class="{ 'selected': selectedProvider === 'openai' }"
+              @click="changeProvider('openai')"
+            >
+              <span class="provider-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 2c5.5 0 10 4.5 10 10s-4.5 10-10 10S2 17.5 2 12 6.5 2 12 2Z"></path>
+                  <path d="M12 14c1.7 0 3-1.3 3-3s-1.3-3-3-3-3 1.3-3 3 1.3 3 3 3Z"></path>
+                </svg>
+              </span>
+              <span>OpenAI</span>
+            </div>
+            <div 
+              class="ai-dropdown-item"
+              :class="{ 'selected': selectedProvider === 'claude' }"
+              @click="changeProvider('claude')"
+            >
+              <span class="provider-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path>
+                </svg>
+              </span>
+              <span>Claude</span>
+            </div>
+          </div>
+        </div>
         <button class="chat-button" @click="sendMessage">
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <line x1="22" y1="2" x2="11" y2="13"></line>
@@ -95,8 +141,8 @@
 
 <script setup>
 import { ref, watch, nextTick, computed, onMounted, watchEffect } from 'vue';
-import ChartVisualizer from './ChartVisualizer.vue';
-import StaticMedicalChart from './StaticMedicalChart.vue';
+import ChartVisualizer from './ui/chart/ChartVisualizer.vue';
+import StaticMedicalChart from './ui/chart/StaticMedicalChart.vue';
 import axios from 'axios';
 
 // Add axios interceptors for debugging
@@ -124,6 +170,8 @@ const activeFilters = ref([]);
 const initialMessageSent = ref(false);
 const isTyping = ref(false);
 const lastThinkingMessageIndex = ref(-1);
+const selectedProvider = ref('openai'); // Default AI provider
+const showAIDropdown = ref(false);
 
 // Format message time
 const formatMessageTime = (time) => {
@@ -146,8 +194,8 @@ const displayMessages = computed(() => {
     : localMessages.value;
 });
 
-// Update emits to include message-updated
-const emit = defineEmits(['chat-started', 'message-sent', 'message-updated', 'thinking-state', 'chart-displayed']);
+// Update emits to include message-updated, provider-changed
+const emit = defineEmits(['chat-started', 'message-sent', 'message-updated', 'thinking-state', 'chart-displayed', 'provider-changed']);
 
 // Props
 const props = defineProps({
@@ -191,6 +239,12 @@ const props = defineProps({
 
 // When component mounts, check if we're in chat mode
 onMounted(() => {
+  // Load preferred provider from localStorage if available
+  const savedProvider = localStorage.getItem('preferredAIProvider');
+  if (savedProvider) {
+    selectedProvider.value = savedProvider;
+  }
+
   if (props.chatMode && props.messages.length === 0) {
     localMessages.value = [
       { text: 'Hello! How can I help you with your data analysis today?', isUser: false, time: new Date() }
@@ -209,6 +263,14 @@ onMounted(() => {
   // Check for existing chart messages on mount
   checkForChartMessages();
   updateContainerClasses();
+
+  // Add click event listener to close dropdown when clicking outside
+  document.addEventListener('click', (event) => {
+    const dropdown = document.querySelector('.ai-dropdown-container');
+    if (dropdown && !dropdown.contains(event.target)) {
+      showAIDropdown.value = false;
+    }
+  });
 });
 
 // Check if any messages contain charts and emit event
@@ -333,7 +395,7 @@ const streamResponse = async (prompt) => {
   try {
     console.log('Starting streaming response for query:', prompt);
     
-    // Create a fetch request to streaming endpoint
+    // Create a fetch request to streaming endpoint with provider
     const response = await fetch('/api/ai/chat/stream', {
       method: 'POST',
       headers: {
@@ -341,7 +403,8 @@ const streamResponse = async (prompt) => {
       },
       body: JSON.stringify({
         message: prompt,
-        sessionId: props.sessionId !== null ? props.sessionId.toString() : 'local-session'
+        sessionId: props.sessionId !== null ? props.sessionId.toString() : 'local-session',
+        provider: selectedProvider.value // Add provider to request
       })
     });
     
@@ -449,7 +512,7 @@ const isChartRelatedQuery = (query) => {
 };
 
 // Handle chart-related queries
-const handleChartQuery = (query) => {
+const handleChartQuery = async (query) => {
   console.log("Processing chart query in ChatBox:", query);
   
   // Hide typing indicator
@@ -461,39 +524,63 @@ const handleChartQuery = (query) => {
     emit('thinking-state', false);
   }
   
-  // Create chart response
-  const chartResponse = {
-    text: `Here's a chart based on your query: "${query}"`,
-    isUser: false,
-    time: new Date(),
-    afterThinking: true,
-    chart: {
-      type: 'bar'
+  try {
+    // Call the backend chart generation endpoint with provider
+    const response = await axios.post('/api/ai/chart', {
+      query: query,
+      sessionId: props.sessionId !== null ? props.sessionId.toString() : 'local-session',
+      provider: selectedProvider.value // Add provider to request
+    });
+    
+    if (!response.data.success || !response.data.chartData) {
+      throw new Error('Invalid chart data received from server');
     }
-  };
-  
-  if (props.sessionId !== null) {
-    emit('message-sent', props.sessionId, chartResponse);
-  } else {
-    localMessages.value.push(chartResponse);
-  }
-  
-  // Add explanatory message after the chart
-  setTimeout(() => {
-    const explanationMessage = {
-      text: "This chart shows the percentage of patients diagnosed with different medical conditions in our sample population. Heart disease is the most prevalent at 42%, followed closely by diabetes at 38%.",
+    
+    const chartData = response.data.chartData;
+    
+    // Create chart response message
+    const chartResponse = {
+      text: chartData.explanation || `Here's a chart based on your query: "${query}"`,
       isUser: false,
-      time: new Date()
+      time: new Date(),
+      afterThinking: true,
+      chart: {
+        type: chartData.chartType || 'bar',
+        data: chartData.data || [],
+        title: chartData.title || 'Chart Visualization',
+        options: chartData.options || {}
+      }
+    };
+    
+    // Add the chart response to messages
+    if (props.sessionId !== null) {
+      emit('message-sent', props.sessionId, chartResponse);
+    } else {
+      localMessages.value.push(chartResponse);
+    }
+    
+    // Scroll to bottom after adding the chart
+    scrollToBottom();
+    
+  } catch (error) {
+    console.error("Error generating chart:", error);
+    
+    // Show error message
+    const errorMessage = {
+      text: "Sorry, I encountered an error generating the chart. Please try a different query.",
+      isUser: false,
+      time: new Date(),
+      afterThinking: true
     };
     
     if (props.sessionId !== null) {
-      emit('message-sent', props.sessionId, explanationMessage);
+      emit('message-sent', props.sessionId, errorMessage);
     } else {
-      localMessages.value.push(explanationMessage);
+      localMessages.value.push(errorMessage);
     }
     
     scrollToBottom();
-  }, 1000);
+  }
 };
 
 const toggleFilter = (filterId) => {
@@ -608,6 +695,23 @@ const updateContainerClasses = () => {
       chatContainer.classList.add('chat-box-with-charts');
     }
   }
+};
+
+// Function to change the AI provider
+const changeProvider = (provider) => {
+  selectedProvider.value = provider;
+  showAIDropdown.value = false; // Close dropdown after selection
+  
+  // Save preference to localStorage
+  localStorage.setItem('preferredAIProvider', provider);
+  
+  // Emit event to notify parent components
+  emit('provider-changed', provider);
+};
+
+// Toggle dropdown visibility
+const toggleAIDropdown = () => {
+  showAIDropdown.value = !showAIDropdown.value;
 };
 </script>
 
@@ -1541,5 +1645,106 @@ const updateContainerClasses = () => {
   .chart-grid {
     gap: 10px;
   }
+}
+
+/* Replace the provider-selector styles with dropdown styles */
+.ai-dropdown-container {
+  position: relative;
+  z-index: 1000;
+}
+
+.ai-dropdown-toggle {
+  display: flex;
+  align-items: center;
+  background-color: rgba(237, 237, 237, 0.5);
+  border: none;
+  border-radius: 16px;
+  padding: 6px 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  gap: 4px;
+}
+
+.ai-dropdown-toggle:hover, .ai-dropdown-toggle.active {
+  background-color: rgba(220, 220, 220, 0.7);
+}
+
+.current-provider-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #555;
+}
+
+.dropdown-arrow {
+  transition: transform 0.2s ease;
+}
+
+.ai-dropdown-toggle.active .dropdown-arrow {
+  transform: rotate(180deg);
+}
+
+.ai-dropdown-menu {
+  position: absolute;
+  bottom: 100%;
+  right: 0;
+  margin-bottom: 4px;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  width: 140px;
+  overflow: hidden;
+  animation: dropdownFadeIn 0.2s ease;
+}
+
+.ai-dropdown-item {
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  gap: 8px;
+}
+
+.ai-dropdown-item:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.ai-dropdown-item.selected {
+  background-color: rgba(37, 123, 223, 0.1);
+  font-weight: 500;
+}
+
+.ai-dropdown-item .provider-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #555;
+}
+
+.ai-dropdown-item.selected .provider-icon {
+  color: rgba(37, 123, 223, 0.9);
+}
+
+/* Animation for dropdown */
+@keyframes dropdownFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Remove the old provider selector styles that are no longer needed */
+.provider-selector {
+  display: none;
+}
+
+/* Remove the old AI providers section that was below the input */
+.ai-providers {
+  display: none;
 }
 </style> 

@@ -52,11 +52,11 @@ import { ref, defineProps, defineEmits } from 'vue';
 import ChartVisualizer from './ChartVisualizer.vue';
 
 // Import chart type icons (these should be replaced with actual icons)
-import barChartIcon from '../assets/icons/bar-chart.svg';
-import lineChartIcon from '../assets/icons/line-chart.svg';
-import pieChartIcon from '../assets/icons/pie-chart.svg';
-import scatterChartIcon from '../assets/icons/scatter-chart.svg';
-import areaChartIcon from '../assets/icons/area-chart.svg';
+import barChartIcon from '../../../assets/icons/bar-chart.svg';
+import lineChartIcon from '../../../assets/icons/line-chart.svg';
+import pieChartIcon from '../../../assets/icons/pie-chart.svg';
+import scatterChartIcon from '../../../assets/icons/scatter-chart.svg';
+import areaChartIcon from '../../../assets/icons/area-chart.svg';
 
 const props = defineProps({
   title: {

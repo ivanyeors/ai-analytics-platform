@@ -20,13 +20,11 @@
           
           <!-- Chart visualization inside the chat bubble -->
           <div v-if="message.chart" class="chat-chart-container">
-            <StaticMedicalChart v-if="message.chart.type === 'bar'" />
             <ChartVisualizer
-              v-else
               :chartType="message.chart.type"
               :data="message.chart.data"
               :title="message.chart.title"
-              :options="message.chart.options"
+              :options="message.chart.options || {}"
               :showCode="false"
               compact-mode="true"
             />
@@ -78,6 +76,37 @@
         </button>
       </div>
       <div class="chat-divider"></div>
+      <div class="ai-providers">
+        <span class="providers-label">AI Provider:</span>
+        <div class="provider-options">
+          <div 
+            class="provider-pill"
+            :class="{ 'active': selectedProvider === 'openai' }"
+            @click="changeProvider('openai')"
+          >
+            <span class="provider-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2c5.5 0 10 4.5 10 10s-4.5 10-10 10S2 17.5 2 12 6.5 2 12 2Z"></path>
+                <path d="M12 14c1.7 0 3-1.3 3-3s-1.3-3-3-3-3 1.3-3 3 1.3 3 3 3Z"></path>
+              </svg>
+            </span>
+            OpenAI
+          </div>
+          <div 
+            class="provider-pill"
+            :class="{ 'active': selectedProvider === 'claude' }"
+            @click="changeProvider('claude')"
+          >
+            <span class="provider-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path>
+              </svg>
+            </span>
+            Claude
+          </div>
+        </div>
+      </div>
+      <div class="chat-divider"></div>
       <div class="chat-filters">
         <div 
           v-for="(filter, index) in filters" 
@@ -124,6 +153,7 @@ const activeFilters = ref([]);
 const initialMessageSent = ref(false);
 const isTyping = ref(false);
 const lastThinkingMessageIndex = ref(-1);
+const selectedProvider = ref('openai'); // Default AI provider
 
 // Format message time
 const formatMessageTime = (time) => {
@@ -146,8 +176,8 @@ const displayMessages = computed(() => {
     : localMessages.value;
 });
 
-// Update emits to include message-updated
-const emit = defineEmits(['chat-started', 'message-sent', 'message-updated', 'thinking-state', 'chart-displayed']);
+// Update emits to include message-updated, provider-changed
+const emit = defineEmits(['chat-started', 'message-sent', 'message-updated', 'thinking-state', 'chart-displayed', 'provider-changed']);
 
 // Props
 const props = defineProps({
@@ -191,6 +221,12 @@ const props = defineProps({
 
 // When component mounts, check if we're in chat mode
 onMounted(() => {
+  // Load preferred provider from localStorage if available
+  const savedProvider = localStorage.getItem('preferredAIProvider');
+  if (savedProvider) {
+    selectedProvider.value = savedProvider;
+  }
+
   if (props.chatMode && props.messages.length === 0) {
     localMessages.value = [
       { text: 'Hello! How can I help you with your data analysis today?', isUser: false, time: new Date() }
@@ -333,7 +369,7 @@ const streamResponse = async (prompt) => {
   try {
     console.log('Starting streaming response for query:', prompt);
     
-    // Create a fetch request to streaming endpoint
+    // Create a fetch request to streaming endpoint with provider
     const response = await fetch('/api/ai/chat/stream', {
       method: 'POST',
       headers: {
@@ -341,7 +377,8 @@ const streamResponse = async (prompt) => {
       },
       body: JSON.stringify({
         message: prompt,
-        sessionId: props.sessionId !== null ? props.sessionId.toString() : 'local-session'
+        sessionId: props.sessionId !== null ? props.sessionId.toString() : 'local-session',
+        provider: selectedProvider.value // Add provider to request
       })
     });
     
@@ -449,7 +486,7 @@ const isChartRelatedQuery = (query) => {
 };
 
 // Handle chart-related queries
-const handleChartQuery = (query) => {
+const handleChartQuery = async (query) => {
   console.log("Processing chart query in ChatBox:", query);
   
   // Hide typing indicator
@@ -461,39 +498,63 @@ const handleChartQuery = (query) => {
     emit('thinking-state', false);
   }
   
-  // Create chart response
-  const chartResponse = {
-    text: `Here's a chart based on your query: "${query}"`,
-    isUser: false,
-    time: new Date(),
-    afterThinking: true,
-    chart: {
-      type: 'bar'
+  try {
+    // Call the backend chart generation endpoint with provider
+    const response = await axios.post('/api/ai/chart', {
+      query: query,
+      sessionId: props.sessionId !== null ? props.sessionId.toString() : 'local-session',
+      provider: selectedProvider.value // Add provider to request
+    });
+    
+    if (!response.data.success || !response.data.chartData) {
+      throw new Error('Invalid chart data received from server');
     }
-  };
-  
-  if (props.sessionId !== null) {
-    emit('message-sent', props.sessionId, chartResponse);
-  } else {
-    localMessages.value.push(chartResponse);
-  }
-  
-  // Add explanatory message after the chart
-  setTimeout(() => {
-    const explanationMessage = {
-      text: "This chart shows the percentage of patients diagnosed with different medical conditions in our sample population. Heart disease is the most prevalent at 42%, followed closely by diabetes at 38%.",
+    
+    const chartData = response.data.chartData;
+    
+    // Create chart response message
+    const chartResponse = {
+      text: chartData.explanation || `Here's a chart based on your query: "${query}"`,
       isUser: false,
-      time: new Date()
+      time: new Date(),
+      afterThinking: true,
+      chart: {
+        type: chartData.chartType || 'bar',
+        data: chartData.data || [],
+        title: chartData.title || 'Chart Visualization',
+        options: chartData.options || {}
+      }
+    };
+    
+    // Add the chart response to messages
+    if (props.sessionId !== null) {
+      emit('message-sent', props.sessionId, chartResponse);
+    } else {
+      localMessages.value.push(chartResponse);
+    }
+    
+    // Scroll to bottom after adding the chart
+    scrollToBottom();
+    
+  } catch (error) {
+    console.error("Error generating chart:", error);
+    
+    // Show error message
+    const errorMessage = {
+      text: "Sorry, I encountered an error generating the chart. Please try a different query.",
+      isUser: false,
+      time: new Date(),
+      afterThinking: true
     };
     
     if (props.sessionId !== null) {
-      emit('message-sent', props.sessionId, explanationMessage);
+      emit('message-sent', props.sessionId, errorMessage);
     } else {
-      localMessages.value.push(explanationMessage);
+      localMessages.value.push(errorMessage);
     }
     
     scrollToBottom();
-  }, 1000);
+  }
 };
 
 const toggleFilter = (filterId) => {
@@ -608,6 +669,17 @@ const updateContainerClasses = () => {
       chatContainer.classList.add('chat-box-with-charts');
     }
   }
+};
+
+// Function to change the AI provider
+const changeProvider = (provider) => {
+  selectedProvider.value = provider;
+  
+  // Save preference to localStorage
+  localStorage.setItem('preferredAIProvider', provider);
+  
+  // Emit event to notify parent components
+  emit('provider-changed', provider);
 };
 </script>
 
@@ -1540,6 +1612,78 @@ const updateContainerClasses = () => {
   
   .chart-grid {
     gap: 10px;
+  }
+}
+
+/* Add styles for AI provider selection */
+.ai-providers {
+  display: flex;
+  align-items: center;
+  padding: 4px 0;
+  margin-bottom: 8px;
+  font-family: 'DM Sans', sans-serif;
+}
+
+.providers-label {
+  font-size: 14px;
+  color: #676767;
+  margin-right: 12px;
+  white-space: nowrap;
+}
+
+.provider-options {
+  display: flex;
+  gap: 8px;
+}
+
+.provider-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background-color: rgba(237, 237, 237, 0.7);
+  border-radius: 384px;
+  padding: 6px 12px;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 500;
+  font-size: 14px;
+  color: #676767;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.provider-pill.active {
+  background-color: rgba(37, 123, 223, 0.9);
+  color: #FFFFFF;
+}
+
+.provider-pill:hover {
+  opacity: 0.9;
+  transform: translateY(-2px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.provider-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Make sure provider pills stay visible on mobile */
+@media (max-width: 480px) {
+  .ai-providers {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
+  .provider-options {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .provider-pill {
+    flex: 1;
+    justify-content: center;
   }
 }
 </style> 

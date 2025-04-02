@@ -106,6 +106,7 @@
       @message-sent="updateChatSession"
       @thinking-state="handleThinkingState"
       @chart-displayed="handleChartDisplayed"
+      @provider-changed="handleProviderChange"
     />
     
     <!-- Chart Panel for chart collection display -->
@@ -134,9 +135,9 @@
 import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import ChatBox from '../components/ChatBox.vue';
-import ChartPanel from '../components/ChartPanel.vue';
-import ChartVisualizer from '../components/ChartVisualizer.vue';
-import ChartActionsPanel from '../components/ChartActionsPanel.vue';
+import ChartPanel from '../components/ui/chart/ChartPanel.vue';
+import ChartVisualizer from '../components/ui/chart/ChartVisualizer.vue';
+import ChartActionsPanel from '../components/ui/chart/ChartActionsPanel.vue';
 import chartDataService from '../utils/chartDataService';
 import axios from 'axios';
 
@@ -192,6 +193,7 @@ const filters = [
 const hoveredCard = ref(null);
 const arrowRotated = ref(false);
 const sidebarCollapsed = ref(false);
+const selectedProvider = ref('openai'); // Default AI provider
 
 // Chart visualization state
 const showChartPanel = ref(false);
@@ -315,7 +317,8 @@ const startChatSession = (initialMessage) => {
       { text: initialMessage, isUser: true, time: new Date() }
     ],
     filters: [],
-    isThinking: true
+    isThinking: true,
+    provider: selectedProvider.value // Include selected provider in the session
   };
 
   chatSessions.value.push(newSession);
@@ -334,7 +337,8 @@ const startChatSession = (initialMessage) => {
     // Send to AI backend
     axios.post('/ai/chat', {
       message: initialMessage,
-      sessionId: sessionId.toString()
+      sessionId: sessionId.toString(),
+      provider: selectedProvider.value // Include provider
     })
     .then(response => {
       updateChatSession(activeChatSession.value, { 
@@ -394,10 +398,11 @@ const updateChatSession = (sessionId, message) => {
         chatSessions.value[sessionId].isThinking = false;
       }, 1000);
     } else {
-      // Send message to AI service
+      // Send message to AI service with provider information
       axios.post('/ai/chat', {
         message: message.text,
-        sessionId: sessionId.toString()
+        sessionId: sessionId.toString(),
+        provider: chatSessions.value[sessionId].provider || selectedProvider.value // Include provider
       })
       .then(response => {
         // Add AI response to chat session
@@ -493,7 +498,8 @@ const createNewChatSession = () => {
   const newSession = {
     id: chatSessions.value.length,
     messages: [{ text: 'Hello! How can I help you with your data analysis today?', isUser: false, time: new Date() }],
-    filters: []
+    filters: [],
+    provider: selectedProvider.value // Include selected provider in the session
   };
   
   chatSessions.value.push(newSession);
@@ -566,59 +572,115 @@ const handleChartQuery = (query) => {
     return;
   }
   
-  // Check if this is a special demo query about charts
-  const isDemo = (query.toLowerCase().includes('chart') || 
-                 query.toLowerCase().includes('graph') || 
-                 query.toLowerCase().includes('plot') || 
-                 query.toLowerCase().includes('show me') || 
-                 query.toLowerCase().includes('demo') || 
-                 query.toLowerCase().includes('example'));
+  const sessionId = activeChatSession.value;
+  // Get the AI provider from the current session or use the default
+  const provider = chatSessions.value[sessionId].provider || selectedProvider.value;
   
-  if (isDemo) {
-    console.log("Detected chart demo/example query");
+  // Check if we should call the chart API instead of using demo data
+  const shouldUseApi = true; // Change this to toggle between API and demo chart
+  
+  if (shouldUseApi) {
+    // Set the session to thinking state
+    chatSessions.value[sessionId].isThinking = true;
+    
+    // Call the backend chart generation API with provider
+    axios.post('/api/ai/chart', {
+      query: query,
+      sessionId: sessionId.toString(),
+      provider: provider // Include selected provider
+    })
+    .then(response => {
+      if (response.data.success && response.data.chartData) {
+        const chartData = response.data.chartData;
+        
+        // Add the chart response to messages
+        updateChatSession(sessionId, {
+          text: chartData.explanation || `Here's a chart based on your query: "${query}"`,
+          isUser: false,
+          time: new Date(),
+          chart: {
+            type: chartData.chartType || 'bar',
+            data: chartData.data || [],
+            title: chartData.title || 'Chart Visualization',
+            options: chartData.options || {}
+          }
+        });
+      } else {
+        throw new Error('Invalid chart data received from server');
+      }
+    })
+    .catch(error => {
+      console.error("Error generating chart:", error);
       
-    // Send a simple bar chart that will trigger our static chart component
-    updateChatSession(activeChatSession.value, { 
-      text: "Here's a chart showing the prevalence of medical conditions:",
-      isUser: false,
-      time: new Date(),
-      chart: {
-        type: 'bar',
-        // Simple data object - this won't actually be used by the static chart
-        // but is needed to maintain compatibility with the existing structure
-        data: []
-      }
-    });
-    
-    // Add a follow-up explanation message
-    setTimeout(() => {
-      updateChatSession(activeChatSession.value, { 
-        text: "This chart shows the percentage of patients diagnosed with different medical conditions in our sample population. Heart disease is the most prevalent at 42%, followed closely by diabetes at 38%.",
+      // Fall back to static demo chart if API fails
+      updateChatSession(sessionId, { 
+        text: "I encountered an error generating the chart. Here's a sample chart instead:",
         isUser: false,
-        time: new Date()
+        time: new Date(),
+        chart: {
+          type: 'bar',
+          data: []
+        }
       });
-    }, 1000);
-  } else {
-    // Process normal chart-related queries (non-demo)
-    // For simplicity, always return a bar chart that will trigger our static component
-    updateChatSession(activeChatSession.value, { 
-      text: `Here's a chart showing medical condition prevalence:`,
-      isUser: false,
-      time: new Date(),
-      chart: {
-        type: 'bar',
-        data: []
-      }
+    })
+    .finally(() => {
+      chatSessions.value[sessionId].isThinking = false;
     });
+  } else {
+    // Check if this is a special demo query about charts
+    const isDemo = (query.toLowerCase().includes('chart') || 
+                   query.toLowerCase().includes('graph') || 
+                   query.toLowerCase().includes('plot') || 
+                   query.toLowerCase().includes('show me') || 
+                   query.toLowerCase().includes('demo') || 
+                   query.toLowerCase().includes('example'));
     
-    // Follow up with analysis in a separate message
-    setTimeout(() => {
-      updateChatSession(activeChatSession.value, { 
-        text: `Analysis: The data shows variation in prevalence across different medical conditions, with heart disease and diabetes being the most common in our sample population. Is there a specific condition you'd like more information about?`, 
-        isUser: false, 
-        time: new Date() 
+    if (isDemo) {
+      console.log("Detected chart demo/example query");
+        
+      // Send a simple bar chart that will trigger our static chart component
+      updateChatSession(sessionId, { 
+        text: "Here's a chart showing the prevalence of medical conditions:",
+        isUser: false,
+        time: new Date(),
+        chart: {
+          type: 'bar',
+          // Simple data object - this won't actually be used by the static chart
+          // but is needed to maintain compatibility with the existing structure
+          data: []
+        }
       });
-    }, 800);
+      
+      // Add a follow-up explanation message
+      setTimeout(() => {
+        updateChatSession(sessionId, { 
+          text: "This chart shows the percentage of patients diagnosed with different medical conditions in our sample population. Heart disease is the most prevalent at 42%, followed closely by diabetes at 38%.",
+          isUser: false,
+          time: new Date()
+        });
+      }, 1000);
+    } else {
+      // Process normal chart-related queries (non-demo)
+      // For simplicity, always return a bar chart that will trigger our static component
+      updateChatSession(sessionId, { 
+        text: `Here's a chart showing medical condition prevalence:`,
+        isUser: false,
+        time: new Date(),
+        chart: {
+          type: 'bar',
+          data: []
+        }
+      });
+      
+      // Follow up with analysis in a separate message
+      setTimeout(() => {
+        updateChatSession(sessionId, { 
+          text: `Analysis: The data shows variation in prevalence across different medical conditions, with heart disease and diabetes being the most common in our sample population. Is there a specific condition you'd like more information about?`, 
+          isUser: false, 
+          time: new Date() 
+        });
+      }, 800);
+    }
   }
 };
 
@@ -861,8 +923,30 @@ watch(() => chatSessions.value, (newSessions, oldSessions) => {
   }
 }, { deep: true });
 
+// Handle AI provider change event from ChatBox
+const handleProviderChange = (provider) => {
+  console.log('AI provider changed:', provider);
+  selectedProvider.value = provider;
+  
+  // Store the selection in localStorage for persistence
+  localStorage.setItem('preferredAIProvider', provider);
+  
+  // Update the provider in all existing sessions for future requests
+  chatSessions.value.forEach(session => {
+    session.provider = provider;
+  });
+};
+
 onMounted(() => {
-  // Generate sample chart data on component mount if needed
+  // Load the preferred AI provider from localStorage if available
+  const savedProvider = localStorage.getItem('preferredAIProvider');
+  if (savedProvider) {
+    selectedProvider.value = savedProvider;
+  }
+  
+  // Load existing chat sessions or create an initial one
+  // Check if we have any saved sessions
+  // ... rest of existing onMounted code ...
 });
 </script>
 
