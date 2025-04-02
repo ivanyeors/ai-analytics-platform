@@ -16,7 +16,8 @@
            :style="{ animationDelay: `${index * 0.1}s` }"
       >
         <div class="message-content">
-          <p>{{ message.text }}</p>
+          <div v-if="message.isUser">{{ message.text }}</div>
+          <div v-else v-html="formatMarkdown(message.text)"></div>
           
           <!-- Chart visualization inside the chat bubble -->
           <div v-if="message.chart" class="chat-chart-container">
@@ -144,6 +145,8 @@ import { ref, watch, nextTick, computed, onMounted, watchEffect } from 'vue';
 import ChartVisualizer from './ui/chart/ChartVisualizer.vue';
 import StaticMedicalChart from './ui/chart/StaticMedicalChart.vue';
 import axios from 'axios';
+import { marked } from 'marked';
+import DOMPurify from 'dompurify';
 
 // Add axios interceptors for debugging
 axios.interceptors.request.use(config => {
@@ -713,6 +716,25 @@ const changeProvider = (provider) => {
 const toggleAIDropdown = () => {
   showAIDropdown.value = !showAIDropdown.value;
 };
+
+// Add formatMarkdown function
+const formatMarkdown = (text) => {
+  if (!text) return '';
+  try {
+    // Configure marked options for markdown parsing
+    marked.setOptions({
+      breaks: true,   // Convert \n to <br> in paragraphs
+      gfm: true       // Enable GitHub flavored markdown
+    });
+    
+    // Parse markdown to HTML and sanitize
+    const rawHtml = marked(text);
+    return DOMPurify.sanitize(rawHtml);
+  } catch (error) {
+    console.error('Error parsing markdown:', error);
+    return text;
+  }
+};
 </script>
 
 <style scoped>
@@ -770,36 +792,7 @@ const toggleAIDropdown = () => {
 }
 
 .chat-bubble {
-  max-width: 70%; /* Adjusted to provide better readability in a wider container */
-  border-radius: 16px;
-  padding: 16px 20px;
-  position: relative;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-  animation: fadeIn 0.5s ease forwards;
-  opacity: 0;
-}
-
-/* Chat input container also needs adjustment for wider display */
-.chat-container.chat-mode .chat-input-container {
-  padding: 25px 40px; /* Increased padding for better spacing */
-}
-
-.chat-messages::-webkit-scrollbar {
-  width: 5px;
-}
-
-.chat-messages::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.05);
-  border-radius: 10px;
-}
-
-.chat-messages::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.1);
-  border-radius: 10px;
-}
-
-.chat-bubble {
-  padding: 12px;
+  padding: 12px 16px;
   border-radius: 16px;
   word-wrap: break-word;
   box-shadow: 0px 0px 3px rgba(123, 123, 123, 0.10);
@@ -830,6 +823,7 @@ const toggleAIDropdown = () => {
   align-self: flex-start;
   background: white;
   color: #323232;
+  padding: 16px 20px;
 }
 
 .thinking-state {
@@ -958,21 +952,144 @@ const toggleAIDropdown = () => {
 }
 
 .message-content {
-  display: flex;
-  flex-direction: column;
   font-family: 'DM Sans', sans-serif;
   width: 100%;
-  max-width: 100%;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
-.message-content p {
+.message-content > *:first-child {
+  margin-top: 0;
+}
+
+.message-content > *:last-child {
+  margin-bottom: 0;
+}
+
+/* Style for user messages (no markdown formatting) */
+.user-message .message-content div {
   margin: 0;
-  color: #323232;
-  font-size: 14px;
-  font-family: 'DM Sans';
-  font-weight: 400;
-  line-height: 20px;
-  word-wrap: break-word;
+}
+
+/* Additional styles for markdown content in chat bubbles */
+.system-message .message-content {
+  font-family: 'DM Sans', sans-serif;
+}
+
+.system-message .message-content h1,
+.system-message .message-content h2,
+.system-message .message-content h3,
+.system-message .message-content h4,
+.system-message .message-content h5,
+.system-message .message-content h6 {
+  margin-top: 16px;
+  margin-bottom: 8px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.system-message .message-content h1 {
+  font-size: 1.5em;
+}
+
+.system-message .message-content h2 {
+  font-size: 1.3em;
+}
+
+.system-message .message-content h3 {
+  font-size: 1.15em;
+}
+
+.system-message .message-content p {
+  margin: 8px 0;
+}
+
+.system-message .message-content ul,
+.system-message .message-content ol {
+  padding-left: 20px;
+  margin: 8px 0;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.system-message .message-content li {
+  margin: 4px 0;
+  padding-left: 4px;
+}
+
+.system-message .message-content li > * {
+  margin: 4px 0;
+}
+
+.system-message .message-content pre {
+  background-color: rgba(0, 0, 0, 0.05);
+  border-radius: 6px;
+  padding: 12px;
+  overflow-x: auto;
+  margin: 10px 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.system-message .message-content code {
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  background-color: rgba(0, 0, 0, 0.05);
+  padding: 2px 4px;
+  border-radius: 4px;
+  font-size: 0.9em;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.system-message .message-content pre code {
+  background-color: transparent;
+  padding: 0;
+  border-radius: 0;
+  font-size: 0.9em;
+  white-space: pre;
+  overflow-x: auto;
+  tab-size: 2;
+}
+
+.system-message .message-content blockquote {
+  border-left: 4px solid rgba(0, 0, 0, 0.1);
+  padding-left: 12px;
+  margin: 12px 0;
+  color: #555;
+  box-sizing: border-box;
+  width: calc(100% - 12px);
+}
+
+.system-message .message-content a {
+  color: #0366d6;
+  text-decoration: none;
+}
+
+.system-message .message-content a:hover {
+  text-decoration: underline;
+}
+
+.system-message .message-content table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 12px 0;
+  font-size: 0.9em;
+  box-sizing: border-box;
+  display: block;
+  overflow-x: auto;
+}
+
+.system-message .message-content table th,
+.system-message .message-content table td {
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: left;
+  min-width: 100px;
+}
+
+.system-message .message-content table th {
+  background-color: rgba(0, 0, 0, 0.05);
+  font-weight: 600;
 }
 
 .message-time {

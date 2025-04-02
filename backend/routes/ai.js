@@ -51,14 +51,14 @@ router.post('/chat', async (req, res) => {
     // Use provided conversation history if available, otherwise use stored history
     if (conversationHistory && Array.isArray(conversationHistory)) {
       sessionMessages = [
-        { role: "system", content: "You are a helpful analytics assistant that helps users understand data and visualizations." },
+        { role: "system", content: "You are a helpful analytics assistant that helps users understand data and visualizations. Format your responses using markdown for better readability. Use headers, lists, code blocks, tables, and other markdown features as appropriate to make your responses more clear and structured." },
         ...conversationHistory
       ];
     } else {
       // Initialize conversation history if it doesn't exist
       if (!conversations[sessionId]) {
         conversations[sessionId] = [
-          { role: "system", content: "You are a helpful analytics assistant that helps users understand data and visualizations." }
+          { role: "system", content: "You are a helpful analytics assistant that helps users understand data and visualizations. Format your responses using markdown for better readability. Use headers, lists, code blocks, tables, and other markdown features as appropriate to make your responses more clear and structured." }
         ];
       }
       
@@ -75,7 +75,7 @@ router.post('/chat', async (req, res) => {
     if (type === 'claude') {
       // Format messages for Claude API
       const systemMessage = sessionMessages.find(msg => msg.role === 'system')?.content || 
-        "You are a helpful analytics assistant that helps users understand data and visualizations.";
+        "You are a helpful analytics assistant that helps users understand data and visualizations. Format your responses using markdown for better readability. Use headers, lists, code blocks, tables, and other markdown features as appropriate to make your responses more clear and structured.";
       
       const claudeMessages = sessionMessages
         .filter(msg => msg.role !== 'system')
@@ -164,14 +164,14 @@ router.post('/chat/stream', async (req, res) => {
     // Use provided conversation history if available, otherwise use stored history
     if (conversationHistory && Array.isArray(conversationHistory)) {
       sessionMessages = [
-        { role: "system", content: "You are a helpful analytics assistant that helps users understand data and visualizations." },
+        { role: "system", content: "You are a helpful analytics assistant that helps users understand data and visualizations. Format your responses using markdown for better readability. Use headers, lists, code blocks, tables, and other markdown features as appropriate to make your responses more clear and structured." },
         ...conversationHistory
       ];
     } else {
       // Initialize conversation history if it doesn't exist
       if (!conversations[sessionId]) {
         conversations[sessionId] = [
-          { role: "system", content: "You are a helpful analytics assistant that helps users understand data and visualizations." }
+          { role: "system", content: "You are a helpful analytics assistant that helps users understand data and visualizations. Format your responses using markdown for better readability. Use headers, lists, code blocks, tables, and other markdown features as appropriate to make your responses more clear and structured." }
         ];
       }
       
@@ -188,7 +188,7 @@ router.post('/chat/stream', async (req, res) => {
     if (type === 'claude') {
       // Format messages for Claude API
       const systemMessage = sessionMessages.find(msg => msg.role === 'system')?.content || 
-        "You are a helpful analytics assistant that helps users understand data and visualizations.";
+        "You are a helpful analytics assistant that helps users understand data and visualizations. Format your responses using markdown for better readability. Use headers, lists, code blocks, tables, and other markdown features as appropriate to make your responses more clear and structured.";
       
       const claudeMessages = sessionMessages
         .filter(msg => msg.role !== 'system')

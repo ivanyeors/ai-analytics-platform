@@ -3,11 +3,37 @@
     <div v-if="loading" class="loading">Loading chart...</div>
     <div ref="chartContainer" class="chart-container"></div>
     <div v-if="error" class="error">{{ error }}</div>
+    <div v-if="!props.data || props.data.length === 0" class="no-data">No data available for chart</div>
+    <div v-if="debugMode" class="debug-info">
+      <h4>Chart Debug Info</h4>
+      <div>
+        <strong>Data count:</strong> {{ props.data ? props.data.length : 0 }}
+      </div>
+      <div>
+        <strong>X key:</strong> {{ props.xKey }} | 
+        <strong>Y key:</strong> {{ props.yKey }}
+      </div>
+      <div>
+        <strong>Chart type:</strong> {{ props.type }}
+      </div>
+      <div v-if="props.data && props.data.length">
+        <details>
+          <summary>Sample data point</summary>
+          <pre>{{ JSON.stringify(props.data[0], null, 2) }}</pre>
+        </details>
+      </div>
+      <div v-if="dataValidity.hasIssues" class="data-issues">
+        <strong>Data issues detected:</strong>
+        <ul>
+          <li v-for="(issue, index) in dataValidity.issues" :key="index">{{ issue }}</li>
+        </ul>
+      </div>
+    </div>
   </div>
 </template>
 
 <script>
-import { defineComponent, ref, onMounted, watch, onUnmounted } from 'vue';
+import { defineComponent, ref, onMounted, watch, onUnmounted, computed } from 'vue';
 import * as Plot from '@observablehq/plot';
 
 export default defineComponent({
@@ -54,6 +80,10 @@ export default defineComponent({
     thresholds: {
       type: Array,
       default: () => []
+    },
+    debugMode: {
+      type: Boolean,
+      default: true // Enable debug mode by default for troubleshooting
     }
   },
   
@@ -63,9 +93,74 @@ export default defineComponent({
     const error = ref(null);
     let chart = null;
     
+    // Computed property to validate data
+    const dataValidity = computed(() => {
+      const issues = [];
+      let hasIssues = false;
+      
+      // Check if we have data
+      if (!props.data || props.data.length === 0) {
+        issues.push('No data available');
+        hasIssues = true;
+        return { hasIssues, issues };
+      }
+      
+      // Check if the keys exist in the data
+      const firstItem = props.data[0];
+      if (!firstItem.hasOwnProperty(props.xKey)) {
+        issues.push(`X-axis key "${props.xKey}" not found in data`);
+        hasIssues = true;
+      }
+      
+      if (!firstItem.hasOwnProperty(props.yKey)) {
+        issues.push(`Y-axis key "${props.yKey}" not found in data`);
+        hasIssues = true;
+      }
+      
+      // Check for data type validity (for basic chart types)
+      if (firstItem.hasOwnProperty(props.xKey)) {
+        const xValues = props.data.map(d => d[props.xKey]);
+        const allXNull = xValues.every(v => v === null || v === undefined);
+        if (allXNull) {
+          issues.push(`All X values are null or undefined`);
+          hasIssues = true;
+        }
+      }
+      
+      if (firstItem.hasOwnProperty(props.yKey)) {
+        const yValues = props.data.map(d => d[props.yKey]);
+        const allYNull = yValues.every(v => v === null || v === undefined);
+        if (allYNull) {
+          issues.push(`All Y values are null or undefined`);
+          hasIssues = true;
+        }
+        
+        // For numeric charts, Y should be numeric
+        if (['bar', 'line', 'area'].includes(props.type)) {
+          const nonNumericY = yValues.some(v => v !== null && v !== undefined && typeof v !== 'number');
+          if (nonNumericY) {
+            issues.push(`Non-numeric Y values found for ${props.type} chart`);
+            hasIssues = true;
+          }
+        }
+      }
+      
+      return { hasIssues, issues };
+    });
+    
     // Function to create the chart
     const createChart = () => {
-      if (!chartContainer.value || !props.data || props.data.length === 0) return;
+      if (!chartContainer.value) return;
+      if (!props.data || props.data.length === 0) {
+        error.value = "No data available for chart";
+        return;
+      }
+      
+      // Only proceed if we have valid data
+      if (dataValidity.value.hasIssues) {
+        error.value = dataValidity.value.issues.join('; ');
+        return;
+      }
       
       loading.value = true;
       error.value = null;
@@ -75,6 +170,14 @@ export default defineComponent({
         if (chartContainer.value.firstChild) {
           chartContainer.value.innerHTML = '';
         }
+        
+        console.log('Creating chart with data:', {
+          type: props.type,
+          xKey: props.xKey,
+          yKey: props.yKey,
+          dataLength: props.data.length,
+          sampleData: props.data.slice(0, 3)
+        });
         
         // Prepare mark based on chart type
         let mark;
@@ -137,6 +240,7 @@ export default defineComponent({
         
         // Add the chart to the DOM
         chartContainer.value.appendChild(chart);
+        console.log('Chart created successfully');
       } catch (e) {
         error.value = `Error rendering chart: ${e.message}`;
         console.error('Error rendering Observable Plot chart:', e);
@@ -151,7 +255,7 @@ export default defineComponent({
     });
     
     // Update the chart when data or options change
-    watch(() => [props.data, props.options, props.type, props.width, props.height], () => {
+    watch(() => [props.data, props.options, props.type, props.xKey, props.yKey, props.width, props.height], () => {
       createChart();
     }, { deep: true });
     
@@ -165,7 +269,9 @@ export default defineComponent({
     return {
       chartContainer,
       loading,
-      error
+      error,
+      dataValidity,
+      props
     };
   }
 });
@@ -188,12 +294,57 @@ export default defineComponent({
   color: #666;
 }
 
-.error {
+.error, .no-data {
   padding: 10px;
   color: #d32f2f;
   background-color: #ffebee;
   border-radius: 4px;
   margin-top: 10px;
+}
+
+.no-data {
+  color: #f57c00;
+  background-color: #fff3e0;
+}
+
+.debug-info {
+  margin-top: 15px;
+  padding: 10px;
+  background-color: #e8f5e9;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.debug-info h4 {
+  margin-top: 0;
+  margin-bottom: 10px;
+}
+
+.debug-info details {
+  margin-top: 10px;
+}
+
+.debug-info pre {
+  background-color: #f5f5f5;
+  padding: 8px;
+  border-radius: 3px;
+  overflow-x: auto;
+  max-height: 200px;
+  font-family: monospace;
+  font-size: 12px;
+}
+
+.data-issues {
+  margin-top: 10px;
+  padding: 8px;
+  background-color: #fff8e1;
+  border-left: 3px solid #ffc107;
+  border-radius: 3px;
+}
+
+.data-issues ul {
+  margin: 5px 0 0 0;
+  padding-left: 20px;
 }
 
 /* Style for Plot tooltips */

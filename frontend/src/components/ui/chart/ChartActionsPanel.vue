@@ -75,111 +75,74 @@
         <!-- Chart collection panel -->
         <div class="chart-panel">
           <div class="chart-examples-container">
-            <!-- Bar Chart Example -->
-            <div class="chart-example bar-chart">
-              <div class="chart-box">
-                <svg width="100%" height="331.51" viewBox="0 0 520 332" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <!-- Chart background -->
-                  <rect width="520" height="331.51" rx="13" fill="#F7F8FA" />
-                  
-                  <!-- Chart grid lines -->
-                  <line x1="40" y1="300" x2="480" y2="300" stroke="#E1E5EB" stroke-width="1"/>
-                  <line x1="40" y1="250" x2="480" y2="250" stroke="#E1E5EB" stroke-width="1"/>
-                  <line x1="40" y1="200" x2="480" y2="200" stroke="#E1E5EB" stroke-width="1"/>
-                  <line x1="40" y1="150" x2="480" y2="150" stroke="#E1E5EB" stroke-width="1"/>
-                  <line x1="40" y1="100" x2="480" y2="100" stroke="#E1E5EB" stroke-width="1"/>
-                  <line x1="40" y1="50" x2="480" y2="50" stroke="#E1E5EB" stroke-width="1"/>
-                  
-                  <!-- Y axis -->
-                  <line x1="40" y1="30" x2="40" y2="300" stroke="#B9B9B9" stroke-width="1"/>
-                  
-                  <!-- X axis -->
-                  <line x1="40" y1="300" x2="480" y2="300" stroke="#B9B9B9" stroke-width="1"/>
-                  
-                  <!-- Bars -->
-                  <rect x="70" y="120" width="30" height="180" fill="#257BDF" rx="3"/>
-                  <rect x="130" y="80" width="30" height="220" fill="#257BDF" rx="3"/>
-                  <rect x="190" y="180" width="30" height="120" fill="#257BDF" rx="3"/>
-                  <rect x="250" y="100" width="30" height="200" fill="#257BDF" rx="3"/>
-                  <rect x="310" y="150" width="30" height="150" fill="#257BDF" rx="3"/>
-                  <rect x="370" y="50" width="30" height="250" fill="#257BDF" rx="3"/>
-                  <rect x="430" y="170" width="30" height="130" fill="#257BDF" rx="3"/>
-                  
-                  <!-- X axis labels -->
-                  <text x="85" y="320" fill="#777777" font-size="12" text-anchor="middle">Q1</text>
-                  <text x="145" y="320" fill="#777777" font-size="12" text-anchor="middle">Q2</text>
-                  <text x="205" y="320" fill="#777777" font-size="12" text-anchor="middle">Q3</text>
-                  <text x="265" y="320" fill="#777777" font-size="12" text-anchor="middle">Q4</text>
-                  <text x="325" y="320" fill="#777777" font-size="12" text-anchor="middle">Q1</text>
-                  <text x="385" y="320" fill="#777777" font-size="12" text-anchor="middle">Q2</text>
-                  <text x="445" y="320" fill="#777777" font-size="12" text-anchor="middle">Q3</text>
-                  
-                  <!-- Y axis labels -->
-                  <text x="35" y="300" fill="#777777" font-size="12" text-anchor="end">0</text>
-                  <text x="35" y="250" fill="#777777" font-size="12" text-anchor="end">20</text>
-                  <text x="35" y="200" fill="#777777" font-size="12" text-anchor="end">40</text>
-                  <text x="35" y="150" fill="#777777" font-size="12" text-anchor="end">60</text>
-                  <text x="35" y="100" fill="#777777" font-size="12" text-anchor="end">80</text>
-                  <text x="35" y="50" fill="#777777" font-size="12" text-anchor="end">100</text>
-                </svg>
+            <div v-if="generatedAnswer">
+              <!-- Dynamic Chart Rendering -->
+              <div class="chart-example bar-chart">
+                <div class="chart-box">
+                  <component 
+                    :is="generatedAnswer.chartComponent" 
+                    v-if="generatedAnswer.chartComponent" 
+                    :chart-data="generatedAnswer.chartData"
+                    :options="generatedAnswer.chartOptions"
+                  />
+                  <div v-else class="no-chart-message">
+                    <p>No chart data available</p>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Dataset Display -->
+              <div class="chart-example data-table">
+                <div class="chart-title">{{ generatedAnswer.title || 'Data Analysis Results' }}</div>
+                <div class="table-container">
+                  <table class="data-table">
+                    <thead>
+                      <tr>
+                        <th v-for="(header, index) in generatedAnswer.headers" :key="index">{{ header }}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="(row, rowIndex) in generatedAnswer.data" :key="rowIndex">
+                        <td v-for="(cell, cellIndex) in row" :key="cellIndex" :class="getCellClass(cell, cellIndex)">
+                          {{ formatCellValue(cell) }}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
-            
-            <!-- Data Table Example -->
-            <div class="chart-example data-table">
-              <div class="table-container">
-                <table class="data-table">
-                  <thead>
-                    <tr>
-                      <th>Category</th>
-                      <th>Value</th>
-                      <th>Change</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td>Product A</td>
-                      <td>$12,450</td>
-                      <td class="positive">+12.3%</td>
-                    </tr>
-                    <tr>
-                      <td>Product B</td>
-                      <td>$8,350</td>
-                      <td class="positive">+5.7%</td>
-                    </tr>
-                    <tr>
-                      <td>Product C</td>
-                      <td>$6,789</td>
-                      <td class="negative">-2.3%</td>
-                    </tr>
-                    <tr>
-                      <td>Product D</td>
-                      <td>$4,125</td>
-                      <td class="positive">+8.1%</td>
-                    </tr>
-                    <tr>
-                      <td>Product E</td>
-                      <td>$3,845</td>
-                      <td class="negative">-1.5%</td>
-                    </tr>
-                  </tbody>
-                </table>
+            <div v-else>
+              <!-- Placeholder for when no answer is selected -->
+              <div class="empty-chart-message">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M19 3H5C3.9 3 3 3.9 3 5V19C3 20.1 3.9 21 5 21H19C20.1 21 21 20.1 21 19V5C21 3.9 20.1 3 19 3ZM9 17H7V10H9V17ZM13 17H11V7H13V17ZM17 17H15V13H17V17Z" fill="#DADEE3"/>
+                </svg>
+                <p>No Generated Answer Selected</p>
+                <span>Select an AI-generated answer to view the analytics visualization</span>
               </div>
             </div>
             
             <!-- Action buttons -->
             <div class="chart-actions">
-              <button class="action-btn secondary" @click="showExpandedView">
+              <button class="action-btn secondary" @click="showExpandedView" data-v-19561bbe>
                 <div class="btn-icon">
-                  <svg width="25" height="24" viewBox="0 0 25 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M11.334 13H7.33398V17H11.334V13Z" fill="#313438"/>
-                    <path d="M17.334 13H13.334V17H17.334V13Z" fill="#313438"/>
-                    <path d="M19.334 3H5.33398C4.23398 3 3.33398 3.9 3.33398 5V19C3.33398 20.1 4.23398 21 5.33398 21H19.334C20.434 21 21.334 20.1 21.334 19V5C21.334 3.9 20.434 3 19.334 3ZM19.334 19H5.33398V5H19.334V19Z" fill="#313438"/>
-                    <path d="M11.334 7H7.33398V11H11.334V7Z" fill="#313438"/>
-                    <path d="M17.334 7H13.334V11H17.334V7Z" fill="#313438"/>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M15 3l2.3 2.3-2.89 2.87 1.42 1.42L18.7 6.7 21 9V3h-6z" fill="#313438"/>
+                    <path d="M3 9l2.3-2.3 2.87 2.89 1.42-1.42L6.7 5.3 9 3H3v6z" fill="#313438"/>
+                    <path d="M9 21l-2.3-2.3 2.89-2.87-1.42-1.42L5.3 17.3 3 15v6h6z" fill="#313438"/>
+                    <path d="M21 15l-2.3 2.3-2.87-2.89-1.42 1.42 2.89 2.87L15 21h6v-6z" fill="#313438"/>
                   </svg>
                 </div>
-                <span>View</span>
+                <span>Full Screen</span>
+              </button>
+              <button class="action-btn secondary" data-v-19561bbe>
+                <div class="btn-icon">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M9.4 16.6L4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0l4.6-4.6-4.6-4.6L16 6l6 6-6 6-1.4-1.4z" fill="#313438"/>
+                  </svg>
+                </div>
+                <span>View Code</span>
               </button>
               <button class="action-btn secondary">
                 <div class="btn-icon">
@@ -216,9 +179,9 @@
                 <path d="M15.41 7.41L14 6L8 12L14 18L15.41 16.59L10.83 12L15.41 7.41Z" fill="#7E8794"/>
               </svg>
             </div>
-            <div class="expanded-view-title">AI Healthcare Analytics</div>
-            <div class="header-badge">
-              <span>medical</span>
+            <div class="expanded-view-title">{{ generatedAnswer?.title || 'AI Generated Answer' }}</div>
+            <div class="header-badge" v-if="generatedAnswer?.category">
+              <span>{{ generatedAnswer.category }}</span>
             </div>
           </div>
           <div class="header-actions">
@@ -258,142 +221,69 @@
         
         <!-- Main expanded content -->
         <div class="expanded-content">
-          <div class="chart-container">
+          <div v-if="generatedAnswer" class="chart-container">
             <!-- Main visualization -->
             <div class="main-chart-area">
-              <svg width="100%" height="400" viewBox="0 0 800 400" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <!-- Chart background -->
-                <rect width="800" height="400" rx="13" fill="#F7F8FA" />
-                
-                <!-- Chart grid lines -->
-                <line x1="50" y1="350" x2="750" y2="350" stroke="#E1E5EB" stroke-width="1"/>
-                <line x1="50" y1="300" x2="750" y2="300" stroke="#E1E5EB" stroke-width="1"/>
-                <line x1="50" y1="250" x2="750" y2="250" stroke="#E1E5EB" stroke-width="1"/>
-                <line x1="50" y1="200" x2="750" y2="200" stroke="#E1E5EB" stroke-width="1"/>
-                <line x1="50" y1="150" x2="750" y2="150" stroke="#E1E5EB" stroke-width="1"/>
-                <line x1="50" y1="100" x2="750" y2="100" stroke="#E1E5EB" stroke-width="1"/>
-                <line x1="50" y1="50" x2="750" y2="50" stroke="#E1E5EB" stroke-width="1"/>
-                
-                <!-- Y axis -->
-                <line x1="50" y1="50" x2="50" y2="350" stroke="#B9B9B9" stroke-width="1"/>
-                
-                <!-- X axis -->
-                <line x1="50" y1="350" x2="750" y2="350" stroke="#B9B9B9" stroke-width="1"/>
-                
-                <!-- Bars -->
-                <rect x="100" y="150" width="40" height="200" fill="#257BDF" rx="3"/>
-                <rect x="170" y="100" width="40" height="250" fill="#257BDF" rx="3"/>
-                <rect x="240" y="200" width="40" height="150" fill="#257BDF" rx="3"/>
-                <rect x="310" y="120" width="40" height="230" fill="#257BDF" rx="3"/>
-                <rect x="380" y="170" width="40" height="180" fill="#257BDF" rx="3"/>
-                <rect x="450" y="80" width="40" height="270" fill="#257BDF" rx="3"/>
-                <rect x="520" y="190" width="40" height="160" fill="#257BDF" rx="3"/>
-                <rect x="590" y="130" width="40" height="220" fill="#257BDF" rx="3"/>
-                <rect x="660" y="160" width="40" height="190" fill="#257BDF" rx="3"/>
-                
-                <!-- X axis labels -->
-                <text x="120" y="370" fill="#777777" font-size="12" text-anchor="middle">Jan</text>
-                <text x="190" y="370" fill="#777777" font-size="12" text-anchor="middle">Feb</text>
-                <text x="260" y="370" fill="#777777" font-size="12" text-anchor="middle">Mar</text>
-                <text x="330" y="370" fill="#777777" font-size="12" text-anchor="middle">Apr</text>
-                <text x="400" y="370" fill="#777777" font-size="12" text-anchor="middle">May</text>
-                <text x="470" y="370" fill="#777777" font-size="12" text-anchor="middle">Jun</text>
-                <text x="540" y="370" fill="#777777" font-size="12" text-anchor="middle">Jul</text>
-                <text x="610" y="370" fill="#777777" font-size="12" text-anchor="middle">Aug</text>
-                <text x="680" y="370" fill="#777777" font-size="12" text-anchor="middle">Sep</text>
-                
-                <!-- Y axis labels -->
-                <text x="45" y="350" fill="#777777" font-size="12" text-anchor="end">0</text>
-                <text x="45" y="300" fill="#777777" font-size="12" text-anchor="end">20</text>
-                <text x="45" y="250" fill="#777777" font-size="12" text-anchor="end">40</text>
-                <text x="45" y="200" fill="#777777" font-size="12" text-anchor="end">60</text>
-                <text x="45" y="150" fill="#777777" font-size="12" text-anchor="end">80</text>
-                <text x="45" y="100" fill="#777777" font-size="12" text-anchor="end">100</text>
-                <text x="45" y="50" fill="#777777" font-size="12" text-anchor="end">120</text>
-              </svg>
+              <component 
+                :is="generatedAnswer.chartComponent" 
+                v-if="generatedAnswer.chartComponent" 
+                :chart-data="generatedAnswer.chartData"
+                :options="generatedAnswer.chartOptions"
+                :style="{ height: '400px', width: '100%' }"
+              />
+              <div v-else class="no-chart-message">
+                <p>No chart data available for this analysis</p>
+              </div>
             </div>
             
-            <div class="chart-title">Healthcare AI Performance Metrics</div>
+            <div class="chart-title">{{ generatedAnswer.title || 'Analysis Results' }}</div>
             
             <!-- Chart insights -->
-            <div class="chart-insights">
-              <div class="insight-item">
-                <div class="insight-title">Diagnostic Accuracy</div>
-                <div class="insight-value">92.7%</div>
-                <div class="insight-trend positive">+4.8% from baseline</div>
-              </div>
-              <div class="insight-item">
-                <div class="insight-title">Processing Time</div>
-                <div class="insight-value">1.3s</div>
-                <div class="insight-trend positive">-24.5% improvement</div>
-              </div>
-              <div class="insight-item">
-                <div class="insight-title">Patient Cases</div>
-                <div class="insight-value">1,482</div>
-                <div class="insight-trend">Analyzed this month</div>
+            <div class="chart-insights" v-if="generatedAnswer.insights && generatedAnswer.insights.length > 0">
+              <div class="insight-item" v-for="(insight, index) in generatedAnswer.insights" :key="index">
+                <div class="insight-title">{{ insight.title }}</div>
+                <div class="insight-value">{{ insight.value }}</div>
+                <div class="insight-trend" :class="insight.trend">{{ insight.description }}</div>
               </div>
             </div>
           </div>
           
           <!-- Data table section -->
-          <div class="data-section">
+          <div class="data-section" v-if="generatedAnswer">
             <div class="section-header">
-              <div class="section-title">Diagnostic Results by Department</div>
+              <div class="section-title">{{ generatedAnswer.datasetTitle || 'Source Dataset' }}</div>
             </div>
             <div class="data-table-container">
               <table class="expanded-data-table">
                 <thead>
                   <tr>
-                    <th>Department</th>
-                    <th>Tests Analyzed</th>
-                    <th>Accuracy</th>
-                    <th>Avg. Time (s)</th>
-                    <th>Confidence</th>
+                    <th v-for="(header, index) in generatedAnswer.headers" :key="index">{{ header }}</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr>
-                    <td>Radiology</td>
-                    <td>583</td>
-                    <td class="positive">94.7%</td>
-                    <td>1.2</td>
-                    <td>High</td>
-                  </tr>
-                  <tr>
-                    <td>Cardiology</td>
-                    <td>421</td>
-                    <td class="positive">91.2%</td>
-                    <td>1.4</td>
-                    <td>High</td>
-                  </tr>
-                  <tr>
-                    <td>Pathology</td>
-                    <td>236</td>
-                    <td class="neutral">87.5%</td>
-                    <td>1.8</td>
-                    <td>Medium</td>
-                  </tr>
-                  <tr>
-                    <td>Neurology</td>
-                    <td>158</td>
-                    <td class="positive">93.1%</td>
-                    <td>1.3</td>
-                    <td>High</td>
-                  </tr>
-                  <tr>
-                    <td>Oncology</td>
-                    <td>84</td>
-                    <td class="neutral">89.6%</td>
-                    <td>1.6</td>
-                    <td>Medium</td>
+                  <tr v-for="(row, rowIndex) in generatedAnswer.data" :key="rowIndex">
+                    <td v-for="(cell, cellIndex) in row" :key="cellIndex" :class="getCellClass(cell, cellIndex)">
+                      {{ formatCellValue(cell) }}
+                    </td>
                   </tr>
                 </tbody>
               </table>
             </div>
           </div>
+          <div v-else class="empty-data-message">
+            <p>No data available for this analysis</p>
+          </div>
           
           <!-- Footer actions -->
           <div class="expanded-footer">
+            <button class="action-btn secondary" data-v-19561bbe>
+              <div class="btn-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M9.4 16.6L4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0l4.6-4.6-4.6-4.6L16 6l6 6-6 6-1.4-1.4z" fill="#313438"/>
+                </svg>
+              </div>
+              <span>View Code</span>
+            </button>
             <button class="action-btn secondary">
               <div class="btn-icon">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -408,7 +298,7 @@
                   <path d="M19 13H13V19H11V13H5V11H11V5H13V11H19V13Z" fill="#313438"/>
                 </svg>
               </div>
-              <span>Schedule Analysis</span>
+              <span>Add to Dashboard</span>
             </button>
             <button class="action-btn secondary">
               <div class="btn-icon">
@@ -420,7 +310,7 @@
               <span>Export Report</span>
             </button>
             <button class="action-btn primary">
-              <span>Share With Team</span>
+              <span>Share Analysis</span>
             </button>
           </div>
         </div>
@@ -437,6 +327,10 @@ const props = defineProps({
   visible: {
     type: Boolean,
     default: false
+  },
+  generatedAnswer: {
+    type: Object,
+    default: null
   }
 });
 
@@ -446,23 +340,38 @@ const detailedView = ref(false);
 const expandedView = ref(false);
 const arrowForward = new URL('../assets/icons/arrow_forward.svg', import.meta.url).href;
 
-// Chart types for the chart selector
-const chartTypes = [
-  { name: 'Bar Chart', icon: '/assets/icons/bar-chart.svg' },
-  { name: 'Line Chart', icon: '/assets/icons/line-chart.svg' },
-  { name: 'Pie Chart', icon: '/assets/icons/pie-chart.svg' },
-  { name: 'Scatter Plot', icon: '/assets/icons/scatter-chart.svg' },
-  { name: 'Area Chart', icon: '/assets/icons/area-chart.svg' }
-];
-
 // Emits
-const emit = defineEmits(['create-dashboard', 'explore-dataset', 'collapse-change']);
+const emit = defineEmits(['create-dashboard', 'explore-dataset', 'collapse-change', 'show-code', 'full-screen']);
 
 // Define the beforeunload handler
 const saveStateBeforeUnload = () => {
   saveCollapsedState();
   saveDetailedViewState();
   saveExpandedViewState();
+};
+
+// Format cell values for display
+const formatCellValue = (value) => {
+  if (typeof value === 'number') {
+    // Format numbers with commas and 2 decimal places if needed
+    return value % 1 === 0 
+      ? value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",") 
+      : value.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  } else if (typeof value === 'string' && value.startsWith('+')) {
+    return value; // Already formatted positive change
+  } else if (typeof value === 'string' && value.startsWith('-')) {
+    return value; // Already formatted negative change
+  }
+  return value;
+};
+
+// Determine CSS class for table cells
+const getCellClass = (value, index) => {
+  if (typeof value === 'string') {
+    if (value.startsWith('+')) return 'positive';
+    if (value.startsWith('-')) return 'negative';
+  }
+  return '';
 };
 
 // Load saved state from localStorage on component mount
@@ -677,6 +586,9 @@ const closeDetailedView = () => {
 };
 
 const showExpandedView = () => {
+  // Emit the full-screen event
+  emit('full-screen', true);
+  
   // First ensure we're not collapsed and exit detailed view
   collapsed.value = false;
   detailedView.value = false;
@@ -713,6 +625,9 @@ const showExpandedView = () => {
 };
 
 const closeExpandedView = () => {
+  // Emit the full-screen event
+  emit('full-screen', false);
+  
   // First remove the visible class to trigger proper transitions
   const panelElement = document.querySelector('.chart-actions-panel.expanded-view');
   if (panelElement) {
@@ -1306,26 +1221,79 @@ watch(() => props.visible, (newVisible, oldVisible) => {
   position: relative; /* Add position relative */
 }
 
-.empty-chart-message {
-  display: none; /* Hide the empty message since we now have chart examples */
+.no-chart-message {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 300px;
+  width: 100%;
+  background-color: #F7F8FA;
+  color: #777777;
+  font-family: 'DM Sans', sans-serif;
+  border-radius: 13px;
 }
 
-.empty-chart-message svg {
-  margin-bottom: 16px;
-}
-
-.empty-chart-message p {
+.no-chart-message p {
   font-size: 16px;
-  font-weight: 500;
-  margin: 0 0 8px 0;
+  margin-bottom: 8px;
+  color: #323232;
+}
+
+.empty-data-message {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 150px;
+  background-color: #F7F8FA;
+  border-radius: 8px;
+  margin: 20px 0;
+}
+
+.empty-data-message p {
+  font-size: 14px;
+  color: #777777;
+  font-family: 'DM Sans', sans-serif;
+}
+
+.chart-title {
+  font-size: 18px;
+  font-weight: 600;
   color: #323232;
   font-family: 'DM Sans', sans-serif;
+  margin: 16px 0 8px 0;
+  padding: 0;
 }
 
-.empty-chart-message span {
-  font-size: 14px;
-  font-family: 'DM Sans', sans-serif;
-  color: #777777;
+.empty-chart-message {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 300px;
+  width: 100%;
+  background-color: #F7F8FA;
+  border-radius: 13px;
+  padding: 24px;
+  box-sizing: border-box;
+}
+
+[data-v-19561bbe] {
+  position: relative;
+}
+
+[data-v-19561bbe]:after {
+  content: "🔒 Pro";
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: #257BDF;
+  color: white;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 6px;
+  border-radius: 10px;
+  opacity: 0.9;
 }
 
 /* Animation for the panel appearing */
@@ -1704,14 +1672,6 @@ body {
   overflow: hidden;
   background: #F7F8FA;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
-.chart-title {
-  font-size: 20px;
-  font-weight: 600;
-  color: #323232;
-  font-family: 'DM Sans', sans-serif;
-  margin-top: 8px;
 }
 
 .chart-insights {

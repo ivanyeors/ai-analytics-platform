@@ -5,6 +5,8 @@
       <router-link to="/" class="nav-link">Home</router-link>
       <router-link to="/dashboard" class="nav-link">Dashboard</router-link>
       <router-link to="/api-test" class="nav-link">API Test</router-link>
+      <router-link to="/singapore-data" class="nav-link">Singapore Data</router-link>
+      <router-link to="/generated-answers" class="nav-link">Generated Answers</router-link>
     </div>
   </div>
 </template>

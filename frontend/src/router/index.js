@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import HomePage from '../pages/HomePage.vue'
 import AnalyticsDashboard from '../pages/AnalyticsDashboard.vue'
 import ApiTestPage from '../ApiTestPage.vue'
+import DataGovSgPage from '../pages/DataGovSgPage.vue'
 
 const routes = [
   {
@@ -26,6 +27,14 @@ const routes = [
     component: ApiTestPage,
     meta: {
       title: 'API Connection Test'
+    }
+  },
+  {
+    path: '/singapore-data',
+    name: 'SingaporeData',
+    component: DataGovSgPage,
+    meta: {
+      title: 'Singapore Data Explorer'
     }
   },
   // Additional routes can be added here
