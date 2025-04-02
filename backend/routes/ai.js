@@ -74,20 +74,24 @@ router.post('/chat', async (req, res) => {
     
     if (type === 'claude') {
       // Format messages for Claude API
-      const claudeMessages = sessionMessages.map(msg => {
-        if (msg.role === 'system') {
-          return { role: 'system', content: msg.content };
-        } else if (msg.role === 'user') {
-          return { role: 'user', content: msg.content };
-        } else {
-          return { role: 'assistant', content: msg.content };
-        }
-      });
+      const systemMessage = sessionMessages.find(msg => msg.role === 'system')?.content || 
+        "You are a helpful analytics assistant that helps users understand data and visualizations.";
+      
+      const claudeMessages = sessionMessages
+        .filter(msg => msg.role !== 'system')
+        .map(msg => {
+          if (msg.role === 'user') {
+            return { role: 'user', content: msg.content };
+          } else {
+            return { role: 'assistant', content: msg.content };
+          }
+        });
       
       // Get response from Claude
       const claudeResponse = await client.messages.create({
         model: "claude-3-opus-20240229",
         max_tokens: 1000,
+        system: systemMessage,
         messages: claudeMessages,
       });
       
@@ -183,21 +187,25 @@ router.post('/chat/stream', async (req, res) => {
     
     if (type === 'claude') {
       // Format messages for Claude API
-      const claudeMessages = sessionMessages.map(msg => {
-        if (msg.role === 'system') {
-          return { role: 'system', content: msg.content };
-        } else if (msg.role === 'user') {
-          return { role: 'user', content: msg.content };
-        } else {
-          return { role: 'assistant', content: msg.content };
-        }
-      });
+      const systemMessage = sessionMessages.find(msg => msg.role === 'system')?.content || 
+        "You are a helpful analytics assistant that helps users understand data and visualizations.";
+      
+      const claudeMessages = sessionMessages
+        .filter(msg => msg.role !== 'system')
+        .map(msg => {
+          if (msg.role === 'user') {
+            return { role: 'user', content: msg.content };
+          } else {
+            return { role: 'assistant', content: msg.content };
+          }
+        });
       
       // Create streaming completion with Claude
       try {
         const stream = await client.messages.create({
           model: "claude-3-opus-20240229",
           max_tokens: 1000,
+          system: systemMessage,
           messages: claudeMessages,
           stream: true,
         });
@@ -219,6 +227,7 @@ router.post('/chat/stream', async (req, res) => {
           const claudeResponse = await client.messages.create({
             model: "claude-3-opus-20240229",
             max_tokens: 1000,
+            system: systemMessage,
             messages: claudeMessages,
           });
           
@@ -358,8 +367,8 @@ router.post('/chart', async (req, res) => {
       const claudeResponse = await client.messages.create({
         model: "claude-3-opus-20240229",
         max_tokens: 1500,
+        system: systemPrompt.content,
         messages: [
-          { role: 'system', content: systemPrompt.content },
           { role: 'user', content: query }
         ]
       });
