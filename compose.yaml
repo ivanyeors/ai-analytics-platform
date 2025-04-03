@@ -1,0 +1,90 @@
+services:
+  # Database service
+  db:
+    image: postgres:latest
+    restart: always
+    environment:
+      POSTGRES_DB: singapore_demographics
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: mysecretpassword
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+
+  # SpaceTimeDB service
+  spacetimedb:
+    image: clockworklabs/spacetimedb:latest
+    restart: always
+    ports:
+      - "3050:3000"
+    volumes:
+      - spacetimedb-data:/var/lib/spacetimedb
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "--quiet", "http://localhost:3000/"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # Database initialization service
+  db-init:
+    build:
+      context: ./database
+      dockerfile: Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: on-failure
+    networks:
+      - app-network
+
+  # AI Backend service
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-empty_key}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-empty_key}
+      - DATABASE_URL=postgres://postgres:mysecretpassword@db:5432/singapore_demographics
+      - SPACETIMEDB_HOST=spacetimedb
+      - SPACETIMEDB_PORT=3000
+      - SPACETIMEDB_MODULE=analytics-module
+    ports:
+      - "3001:3001"
+    depends_on:
+      - db
+      - spacetimedb
+    networks:
+      - app-network
+
+  # Frontend service
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+      - db
+    networks:
+      - app-network
+
+volumes:
+  db-data:
+  spacetimedb-data:
+
+networks:
+  app-network:
+    driver: bridge 

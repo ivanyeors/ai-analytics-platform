@@ -1,116 +1,116 @@
 <template>
-  <div class="app-container">
-    <!-- Remove default header, since the HomePage component has its own header -->
-    <main class="app-content no-padding">
-      <router-view />
-    </main>
+  <div id="app">
+    <NavBar v-if="showNavBar" />
+    <router-view />
   </div>
 </template>
 
 <script>
+import { computed } from 'vue';
+import { useRoute } from 'vue-router';
+import NavBar from './components/NavBar.vue';
+
 export default {
-  name: 'App'
+  name: 'App',
+  components: {
+    NavBar
+  },
+  setup() {
+    const route = useRoute();
+    
+    // Hide navbar on home page or 404 page
+    const showNavBar = computed(() => {
+      return route.name !== 'Home' && route.name !== 'NotFound';
+    });
+    
+    return {
+      showNavBar
+    };
+  }
 }
 </script>
 
 <style>
-/* Global styles */
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap');
-@import url('https://fonts.googleapis.com/icon?family=Material+Icons');
-
-:root {
-  /* Keep original palette but add EVYD theme colors */
-  --primary-color: #2196f3;
-  --primary-dark: #1976d2;
-  --primary-light: #bbdefb;
-  --accent-color: #ff4081;
-  --text-color: #333333;
-  --text-light: #757575;
-  --bg-color: #FFFFFF;
-  --card-color: #ffffff;
-  --border-color: #e0e0e0;
-  --error-color: #f44336;
-  --success-color: #4caf50;
-  --warning-color: #ff9800;
-  --info-color: #2196f3;
-  
-  /* EVYD specific colors */
-  --evyd-gradient-start: #2CE4CF;
-  --evyd-gradient-end: #0076B4;
-}
-
+/* Reset and base styles */
 * {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
 }
 
-body {
-  font-family: 'DM Sans', sans-serif;
-  color: var(--text-color);
-  background-color: var(--bg-color);
-  line-height: 1.6;
-  font-size: 16px;
-  min-height: 100vh;
+html, body {
+  height: 100%;
   width: 100%;
-  overflow-x: hidden;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
+    Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: #2c3e50;
+  background-color: #f8f9fa;
 }
 
-.app-container {
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
+#app {
+  height: 100%;
   width: 100%;
 }
 
-.app-content {
-  flex: 1 0 auto;
-  width: 100%;
+a {
+  color: #2196f3;
+  text-decoration: none;
 }
 
-.app-content.no-padding {
-  padding: 0;
+a:hover {
+  text-decoration: underline;
 }
 
-h1 {
-  font-size: 32px;
-  font-weight: 400;
-  color: #232323;
-  letter-spacing: -0.02em;
-  line-height: 1.2em;
-}
-
-h2 {
-  font-size: 1.5rem;
-  font-weight: 600;
-  margin-bottom: 1rem;
-  color: var(--text-color);
-}
-
-h3 {
-  font-size: 1.25rem;
-  font-weight: 600;
-  margin-bottom: 0.75rem;
-  color: var(--text-color);
-}
-
-button, select, input {
+button {
+  cursor: pointer;
+  border: none;
+  background: none;
   font-family: inherit;
-  font-size: inherit;
 }
 
-/* For tooltips and other global elements */
-.tooltip {
-  position: absolute;
-  background-color: rgba(33, 33, 33, 0.9);
-  color: white;
-  padding: 8px 12px;
-  border-radius: 4px;
-  font-size: 12px;
-  pointer-events: none;
-  z-index: 1000;
-  max-width: 300px;
-  white-space: normal;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+/* Utility classes */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.flex {
+  display: flex;
+}
+
+.flex-col {
+  flex-direction: column;
+}
+
+.items-center {
+  align-items: center;
+}
+
+.justify-between {
+  justify-content: space-between;
+}
+
+.gap-4 {
+  gap: 1rem;
+}
+
+/* Material Icons */
+.material-icons {
+  font-family: 'Material Icons';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
 }
 </style> 

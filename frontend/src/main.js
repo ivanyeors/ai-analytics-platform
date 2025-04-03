@@ -1,39 +1,14 @@
 import { createApp } from 'vue'
-import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router'
-import axios from 'axios'
+import { createPinia } from 'pinia'
 
-import './assets/main.css'
-
-// Initialize Pinia
-const pinia = createPinia()
-
-// Create Vue app
+// Create the app instance
 const app = createApp(App)
 
-// Register plugins
-app.use(pinia)
+// Use the router and Pinia store
 app.use(router)
+app.use(createPinia())
 
-// Configure axios
-axios.defaults.baseURL = '/api'
-
-// Add axios interceptors for debugging
-axios.interceptors.request.use(config => {
-  console.log('Axios Request:', config);
-  return config;
-}, error => {
-  console.error('Axios Request Error:', error);
-  return Promise.reject(error);
-});
-
-axios.interceptors.response.use(response => {
-  console.log('Axios Response:', response);
-  return response;
-}, error => {
-  console.error('Axios Response Error:', error);
-  return Promise.reject(error);
-});
-
+// Mount the app
 app.mount('#app') 

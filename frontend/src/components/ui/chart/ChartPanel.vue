@@ -7,10 +7,10 @@
       </div>
       <div class="panel-actions">
         <button class="panel-action" @click="togglePanel" :title="expanded ? 'Collapse' : 'Expand'">
-          <span class="icon">{{ expanded ? '▲' : '▼' }}</span>
+          <span class="material-icons">{{ expanded ? 'expand_less' : 'expand_more' }}</span>
         </button>
         <button class="panel-action" @click="$emit('close')" title="Close">
-          <span class="icon">✕</span>
+          <span class="material-icons">close</span>
         </button>
       </div>
     </div>
@@ -25,30 +25,23 @@
         >
           <ChartVisualizer
             :chartType="chart.type"
-            :chartData="chart.chartData"
+            :data="chart.data"
             :title="chart.title"
-            :loading="chart.loading || false"
-            :error="chart.error || ''"
-            :showCodeBtn="true"
-            :curveType="chart.curveType || 'linear'"
-            :isStacked="chart.isStacked || false"
+            :options="chart.options || {}"
+            :showCode="chart.showCode || false"
+            :showClose="charts.length > 1"
+            @close="removeChart(index)"
+            @chart-rendered="onChartRendered(index)"
           />
         </div>
       </div>
       
       <div v-if="showAddChart" class="add-chart-section">
         <h3>Add a new chart</h3>
-        <div class="chart-type-buttons">
-          <button 
-            v-for="type in chartTypes" 
-            :key="type.value" 
-            class="chart-type-button" 
-            @click="addNewChart(type.value)"
-          >
-            <span class="button-icon" v-html="getChartIcon(type.value)"></span>
-            <span>{{ type.label }}</span>
-          </button>
-        </div>
+        <button class="add-chart-button" @click="addNewBarChart">
+          <span class="button-icon">+</span>
+          <span>Add Bar Chart</span>
+        </button>
       </div>
     </div>
   </div>
@@ -56,7 +49,10 @@
 
 <script setup>
 import { ref, defineProps, defineEmits } from 'vue';
-import { ChartVisualizer } from '@/components/ui/chart';
+import ChartVisualizer from './ChartVisualizer.vue';
+
+// Import only the icon that is used
+import barChartIcon from '../../../assets/icons/bar-chart.svg';
 
 const props = defineProps({
   title: {
@@ -82,41 +78,25 @@ const emit = defineEmits(['close', 'add-chart', 'chart-rendered']);
 const expanded = ref(true);
 const charts = ref(props.initialCharts);
 
-// Available chart types
-const chartTypes = [
-  { label: 'Bar Chart', value: 'bar' },
-  { label: 'Line Chart', value: 'line' },
-  { label: 'Pie Chart', value: 'pie' },
-  { label: 'Donut Chart', value: 'donut' },
-  { label: 'Area Chart', value: 'area' }
-];
-
-// Get icon for chart type
-function getChartIcon(type) {
-  switch (type) {
-    case 'bar':
-      return '+';
-    case 'line':
-      return '+';
-    case 'pie':
-    case 'donut':
-      return '+';
-    case 'area':
-      return '+';
-    default:
-      return '+';
-  }
-}
-
 // Toggle expanded state
 function togglePanel() {
   expanded.value = !expanded.value;
 }
 
-// Add a new chart by type
-function addNewChart(type) {
+// Remove a chart by index
+function removeChart(index) {
+  charts.value.splice(index, 1);
+}
+
+// Add a new chart (always bar chart)
+function addNewBarChart() {
   // Emit event to parent to handle the chart creation
-  emit('add-chart', { type });
+  emit('add-chart', { type: 'bar' });
+}
+
+// Handle chart rendered event
+function onChartRendered(index) {
+  emit('chart-rendered', { index, chart: charts.value[index] });
 }
 </script>
 
@@ -124,7 +104,7 @@ function addNewChart(type) {
 .chart-panel {
   width: 100%;
   border-radius: 16px;
-  background-color: rgba(255, 255, 255, 0.95);
+  background-color: rgba(255, 255, 255, 0.9);
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
   margin: 20px 0;
   overflow: hidden;
@@ -178,10 +158,6 @@ function addNewChart(type) {
   background-color: rgba(37, 123, 223, 0.1);
 }
 
-.panel-action .icon {
-  font-size: 16px;
-}
-
 .panel-content {
   padding: 16px;
   max-height: 1200px;
@@ -220,31 +196,21 @@ function addNewChart(type) {
   margin: 0 0 16px 0;
 }
 
-.chart-type-buttons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.chart-type-button {
+.add-chart-button {
   background: none;
   border: none;
   color: #676767;
   cursor: pointer;
-  padding: 10px 16px;
+  padding: 12px 20px;
   border-radius: 8px;
   background-color: white;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
   transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  font-size: 14px;
 }
 
-.chart-type-button:hover {
+.add-chart-button:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(37, 123, 223, 0.2);
-  color: #257BDF;
 }
 
 .button-icon {
@@ -256,10 +222,6 @@ function addNewChart(type) {
 @media (max-width: 768px) {
   .chart-grid {
     grid-template-columns: 1fr;
-  }
-  
-  .chart-type-buttons {
-    flex-direction: column;
   }
 }
 

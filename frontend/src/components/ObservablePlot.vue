@@ -107,18 +107,18 @@ export default defineComponent({
       
       // Check if the keys exist in the data
       const firstItem = props.data[0];
-      if (!firstItem.hasOwnProperty(props.xKey)) {
+      if (!Object.prototype.hasOwnProperty.call(firstItem, props.xKey)) {
         issues.push(`X-axis key "${props.xKey}" not found in data`);
         hasIssues = true;
       }
       
-      if (!firstItem.hasOwnProperty(props.yKey)) {
+      if (!Object.prototype.hasOwnProperty.call(firstItem, props.yKey)) {
         issues.push(`Y-axis key "${props.yKey}" not found in data`);
         hasIssues = true;
       }
       
       // Check for data type validity (for basic chart types)
-      if (firstItem.hasOwnProperty(props.xKey)) {
+      if (Object.prototype.hasOwnProperty.call(firstItem, props.xKey)) {
         const xValues = props.data.map(d => d[props.xKey]);
         const allXNull = xValues.every(v => v === null || v === undefined);
         if (allXNull) {
@@ -127,7 +127,7 @@ export default defineComponent({
         }
       }
       
-      if (firstItem.hasOwnProperty(props.yKey)) {
+      if (Object.prototype.hasOwnProperty.call(firstItem, props.yKey)) {
         const yValues = props.data.map(d => d[props.yKey]);
         const allYNull = yValues.every(v => v === null || v === undefined);
         if (allYNull) {

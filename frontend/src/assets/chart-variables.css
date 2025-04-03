@@ -1,0 +1,62 @@
+:root {
+  /* Primary chart colors */
+  --chart-1: hsl(214.3 84.1% 54.1%);
+  --chart-2: hsl(340 82% 52%);
+  --chart-3: hsl(141.7 79.9% 38.4%);
+  --chart-4: hsl(47.9 95.8% 53.1%);
+  --chart-5: hsl(262.1 83.3% 57.8%);
+  --chart-6: hsl(190, 95%, 39%);
+  --chart-7: hsl(22, 100%, 57%);
+  --chart-8: hsl(158, 64%, 31%);
+  --chart-9: hsl(268, 75%, 31%);
+  --chart-10: hsl(176, 83%, 46%);
+
+  /* Fallback colors for compatibility */
+  --chart-1-fallback: #3b82f6;
+  --chart-2-fallback: #e11d48;
+  --chart-3-fallback: #16a34a;
+  --chart-4-fallback: #eab308;
+  --chart-5-fallback: #8b5cf6;
+  --chart-6-fallback: #06b6d4;
+  --chart-7-fallback: #f97316;
+  --chart-8-fallback: #10b981;
+  --chart-9-fallback: #7e22ce;
+  --chart-10-fallback: #14b8a6;
+}
+
+/* For dark mode, you can override these colors if needed */
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Brighter variations for dark mode */
+    --chart-1: hsl(214.3 94% 64%);
+    --chart-2: hsl(340 92% 62%);
+    --chart-3: hsl(141.7 89% 48%);
+    --chart-4: hsl(47.9 100% 63%);
+    --chart-5: hsl(262.1 93% 67%);
+    --chart-6: hsl(190, 100%, 49%);
+    --chart-7: hsl(22, 100%, 67%);
+    --chart-8: hsl(158, 74%, 41%);
+    --chart-9: hsl(268, 85%, 41%);
+    --chart-10: hsl(176, 93%, 56%);
+  }
+}
+
+/* Additional chart-specific variables */
+:root {
+  /* Chart background and foreground colors */
+  --chart-background: var(--card, white);
+  --chart-foreground: var(--card-foreground, rgba(0, 0, 0, 0.85));
+  
+  /* Grid and axis colors */
+  --chart-grid: var(--border, rgba(0, 0, 0, 0.1));
+  --chart-axis: var(--muted-foreground, rgba(0, 0, 0, 0.6));
+  
+  /* Tooltip colors */
+  --chart-tooltip-background: var(--popover, white);
+  --chart-tooltip-foreground: var(--popover-foreground, black);
+  --chart-tooltip-border: var(--border, rgba(0, 0, 0, 0.1));
+  
+  /* Legend colors */
+  --chart-legend-text: var(--muted-foreground, rgba(0, 0, 0, 0.6));
+  --chart-legend-active: var(--card-foreground, rgba(0, 0, 0, 0.85));
+} 

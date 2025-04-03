@@ -95,6 +95,19 @@
     
     <div v-if="!selectedDatasetId && !loadingData" class="instructions">
       Select a dataset from the dropdown to begin. Recommended datasets are pre-selected for optimal visualization.
+      
+      <div class="example-queries">
+        <h3>Example Questions for AI Chat</h3>
+        <p>Here are some questions you can ask in the AI Chat about Singapore data:</p>
+        <ul>
+          <li>What is the population of Singapore over time?</li>
+          <li>Show me a chart of Singapore residents by age group</li>
+          <li>Compare male and female population in Singapore</li>
+          <li>Create a bar chart of education levels in Singapore</li>
+          <li>What are the demographics trends in Singapore?</li>
+          <li>Visualize Singapore's public transport ridership</li>
+        </ul>
+      </div>
     </div>
     
     <div v-if="aiSuggestion" class="ai-suggestion">
@@ -818,5 +831,45 @@ button:disabled {
   font-size: 12px;
   white-space: pre-wrap;
   word-break: break-all;
+}
+
+.instructions {
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+  border-left: 4px solid #2196f3;
+}
+
+.example-queries {
+  margin-top: 20px;
+  padding-top: 15px;
+  border-top: 1px dashed #ccc;
+}
+
+.example-queries h3 {
+  color: #333;
+  margin-bottom: 10px;
+  font-size: 18px;
+}
+
+.example-queries p {
+  margin-bottom: 10px;
+}
+
+.example-queries ul {
+  padding-left: 20px;
+}
+
+.example-queries li {
+  margin-bottom: 8px;
+  color: #555;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.example-queries li:hover {
+  color: #2196f3;
+  text-decoration: underline;
 }
 </style> 

@@ -179,6 +179,12 @@ const actions = [
     type: 'dataset',
     description: 'Analyze and transform your data with advanced filtering',
     chartPreview: datasetPreview
+  },
+  {
+    title: 'Singapore Data Explorer',
+    type: 'singapore-data',
+    description: 'Query and visualize open datasets from data.gov.sg',
+    chartPreview: datasetPreview // Reusing the same image for now
   }
 ];
 
@@ -248,55 +254,20 @@ const showActionCards = computed(() => {
 const handleActionClick = (type) => {
   console.log(`Action clicked: ${type}`);
   
-  if (type === 'charts') {
-    // Create a new chat session if one doesn't exist yet
-    if (activeChatSession.value === null) {
-      const newSession = {
-        id: chatSessions.value.length,
-        title: "Chart Generation",
-        messages: [
-          { text: 'Hello! How can I help you with your data analysis today?', isUser: false, time: new Date() }
-        ],
-        filters: []
-      };
-      
-      chatSessions.value.push(newSession);
-      activeChatSession.value = newSession.id;
-    }
+  // Either redirect to a specific dashboard page or start a chat with a prompt
+  if (type === 'dashboard') {
+    // Option 1: Create a message in the chat with dashboard creation prompt
+    createChatWithPrompt('Create a dashboard showing key metrics for my data');
     
-    // Add an example/suggestion message to the chat
-    updateChatSession(activeChatSession.value, { 
-      text: "What kind of chart would you like to create? You can ask me things like:\n\n• \"Generate a bar chart showing monthly sales for 2023\"\n• \"Create a line chart of temperature trends\"\n• \"Show me a pie chart of market share by region\"\n• \"Visualize website traffic by source\"", 
-      isUser: false, 
-      time: new Date() 
-    });
-    
-    // Pre-fill a sample query in the chat input
-    setTimeout(() => {
-      const chatBoxElement = document.querySelector('.chat-input');
-      if (chatBoxElement) {
-        chatBoxElement.value = "Generate a bar chart showing monthly sales data";
-        chatBoxElement.focus();
-      }
-    }, 300);
-  } else if (type === 'dashboard') {
-    // Navigate to dashboard or show dashboard content
-    if (activeChatSession.value !== null) {
-      updateChatSession(activeChatSession.value, { 
-        text: "Dashboard functionality is coming soon. You can currently work with charts and datasets.", 
-        isUser: false, 
-        time: new Date() 
-      });
-    }
+    // Option 2: Navigate to the dashboard view directly
+    // router.push('/dashboard');
+  } else if (type === 'charts') {
+    createChatWithPrompt('Create a chart to visualize my data');
   } else if (type === 'dataset') {
-    // Show dataset exploration options
-    if (activeChatSession.value !== null) {
-      updateChatSession(activeChatSession.value, { 
-        text: "What kind of dataset would you like to explore? I can help you analyze sales data, customer metrics, or time series data.", 
-        isUser: false, 
-        time: new Date() 
-      });
-    }
+    createChatWithPrompt('Help me explore and analyze my dataset');
+  } else if (type === 'singapore-data') {
+    // Navigate to the Singapore Data Explorer page
+    router.push('/singapore-data');
   }
 };
 
@@ -963,6 +934,39 @@ const handleProviderChange = (provider) => {
   chatSessions.value.forEach(session => {
     session.provider = provider;
   });
+};
+
+// Function to create a new chat session with a specific prompt
+const createChatWithPrompt = (prompt) => {
+  // Create a new chat session if one doesn't exist yet
+  if (activeChatSession.value === null) {
+    const newSession = {
+      id: chatSessions.value.length,
+      title: prompt.slice(0, 30) + (prompt.length > 30 ? '...' : ''),
+      messages: [
+        { text: 'Hello! How can I help you with your data analysis today?', isUser: false, time: new Date() }
+      ],
+      filters: []
+    };
+    
+    chatSessions.value.push(newSession);
+    activeChatSession.value = newSession.id;
+  }
+  
+  // Add the prompt message to the chat
+  updateChatSession(activeChatSession.value, { 
+    text: prompt, 
+    isUser: true, 
+    time: new Date() 
+  });
+  
+  // Add a placeholder thinking message
+  updateChatSession(activeChatSession.value, { 
+    isThinking: true
+  });
+  
+  // Simulate AI thinking state
+  emit('thinking-state', true);
 };
 
 onMounted(() => {

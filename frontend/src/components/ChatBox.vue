@@ -16,8 +16,7 @@
            :style="{ animationDelay: `${index * 0.1}s` }"
       >
         <div class="message-content">
-          <div v-if="message.isUser">{{ message.text }}</div>
-          <div v-else v-html="formatMarkdown(message.text)"></div>
+          <p>{{ message.text }}</p>
           
           <!-- Chart visualization inside the chat bubble -->
           <div v-if="message.chart" class="chat-chart-container">
@@ -69,60 +68,43 @@
           v-model="chatInput"
           @keyup.enter="sendMessage"
         />
-        <div class="ai-dropdown-container">
-          <button 
-            class="ai-dropdown-toggle" 
-            @click="toggleAIDropdown"
-            :class="{ 'active': showAIDropdown }"
-          >
-            <span class="current-provider-icon">
-              <svg v-if="selectedProvider === 'openai'" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 2c5.5 0 10 4.5 10 10s-4.5 10-10 10S2 17.5 2 12 6.5 2 12 2Z"></path>
-                <path d="M12 14c1.7 0 3-1.3 3-3s-1.3-3-3-3-3 1.3-3 3 1.3 3 3 3Z"></path>
-              </svg>
-              <svg v-else xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path>
-              </svg>
-            </span>
-            <svg class="dropdown-arrow" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="m6 9 6 6 6-6"/>
-            </svg>
-          </button>
-          
-          <div class="ai-dropdown-menu" v-if="showAIDropdown">
-            <div 
-              class="ai-dropdown-item"
-              :class="{ 'selected': selectedProvider === 'openai' }"
-              @click="changeProvider('openai')"
-            >
-              <span class="provider-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M12 2c5.5 0 10 4.5 10 10s-4.5 10-10 10S2 17.5 2 12 6.5 2 12 2Z"></path>
-                  <path d="M12 14c1.7 0 3-1.3 3-3s-1.3-3-3-3-3 1.3-3 3 1.3 3 3 3Z"></path>
-                </svg>
-              </span>
-              <span>OpenAI</span>
-            </div>
-            <div 
-              class="ai-dropdown-item"
-              :class="{ 'selected': selectedProvider === 'claude' }"
-              @click="changeProvider('claude')"
-            >
-              <span class="provider-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path>
-                </svg>
-              </span>
-              <span>Claude</span>
-            </div>
-          </div>
-        </div>
         <button class="chat-button" @click="sendMessage">
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <line x1="22" y1="2" x2="11" y2="13"></line>
             <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
           </svg>
         </button>
+      </div>
+      <div class="chat-divider"></div>
+      <div class="ai-providers">
+        <span class="providers-label">AI Provider:</span>
+        <div class="provider-options">
+          <div 
+            class="provider-pill"
+            :class="{ 'active': selectedProvider === 'openai' }"
+            @click="changeProvider('openai')"
+          >
+            <span class="provider-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2c5.5 0 10 4.5 10 10s-4.5 10-10 10S2 17.5 2 12 6.5 2 12 2Z"></path>
+                <path d="M12 14c1.7 0 3-1.3 3-3s-1.3-3-3-3-3 1.3-3 3 1.3 3 3 3Z"></path>
+              </svg>
+            </span>
+            OpenAI
+          </div>
+          <div 
+            class="provider-pill"
+            :class="{ 'active': selectedProvider === 'claude' }"
+            @click="changeProvider('claude')"
+          >
+            <span class="provider-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path>
+              </svg>
+            </span>
+            Claude
+          </div>
+        </div>
       </div>
       <div class="chat-divider"></div>
       <div class="chat-filters">
@@ -143,10 +125,7 @@
 <script setup>
 import { ref, watch, nextTick, computed, onMounted, watchEffect } from 'vue';
 import ChartVisualizer from './ui/chart/ChartVisualizer.vue';
-import StaticMedicalChart from './ui/chart/StaticMedicalChart.vue';
 import axios from 'axios';
-import { marked } from 'marked';
-import DOMPurify from 'dompurify';
 
 // Add axios interceptors for debugging
 axios.interceptors.request.use(config => {
@@ -174,7 +153,6 @@ const initialMessageSent = ref(false);
 const isTyping = ref(false);
 const lastThinkingMessageIndex = ref(-1);
 const selectedProvider = ref('openai'); // Default AI provider
-const showAIDropdown = ref(false);
 
 // Format message time
 const formatMessageTime = (time) => {
@@ -266,14 +244,6 @@ onMounted(() => {
   // Check for existing chart messages on mount
   checkForChartMessages();
   updateContainerClasses();
-
-  // Add click event listener to close dropdown when clicking outside
-  document.addEventListener('click', (event) => {
-    const dropdown = document.querySelector('.ai-dropdown-container');
-    if (dropdown && !dropdown.contains(event.target)) {
-      showAIDropdown.value = false;
-    }
-  });
 });
 
 // Check if any messages contain charts and emit event
@@ -448,12 +418,14 @@ const streamResponse = async (prompt) => {
     const decoder = new TextDecoder('utf-8');
     let streamedText = '';
     
-    while (true) {
-      const { done, value } = await reader.read();
+    let done = false;
+    while (!done) {
+      const result = await reader.read();
+      done = result.done;
       if (done) break;
       
       // Decode the chunk and append to message
-      const chunk = decoder.decode(value, { stream: true });
+      const chunk = decoder.decode(result.value, { stream: true });
       streamedText += chunk;
       
       // Update the message text
@@ -529,7 +501,7 @@ const handleChartQuery = async (query) => {
   
   try {
     // Call the backend chart generation endpoint with provider
-    const response = await axios.post('/ai/chart', {
+    const response = await axios.post('/api/ai/chart', {
       query: query,
       sessionId: props.sessionId !== null ? props.sessionId.toString() : 'local-session',
       provider: selectedProvider.value // Add provider to request
@@ -666,15 +638,15 @@ watch(isTyping, (newValue, oldValue) => {
 });
 
 // Watch for changes to props to update container classes
-watch(() => props.chartActionsVisible, (newValue) => {
+watch(() => props.chartActionsVisible, () => {
   updateContainerClasses();
 });
 
-watch(() => props.chartActionsCollapsed, (newValue) => {
+watch(() => props.chartActionsCollapsed, () => {
   updateContainerClasses();
 });
 
-watch(() => props.chatHistoryVisible, (newValue) => {
+watch(() => props.chatHistoryVisible, () => {
   updateContainerClasses();
 });
 
@@ -703,37 +675,12 @@ const updateContainerClasses = () => {
 // Function to change the AI provider
 const changeProvider = (provider) => {
   selectedProvider.value = provider;
-  showAIDropdown.value = false; // Close dropdown after selection
   
   // Save preference to localStorage
   localStorage.setItem('preferredAIProvider', provider);
   
   // Emit event to notify parent components
   emit('provider-changed', provider);
-};
-
-// Toggle dropdown visibility
-const toggleAIDropdown = () => {
-  showAIDropdown.value = !showAIDropdown.value;
-};
-
-// Add formatMarkdown function
-const formatMarkdown = (text) => {
-  if (!text) return '';
-  try {
-    // Configure marked options for markdown parsing
-    marked.setOptions({
-      breaks: true,   // Convert \n to <br> in paragraphs
-      gfm: true       // Enable GitHub flavored markdown
-    });
-    
-    // Parse markdown to HTML and sanitize
-    const rawHtml = marked(text);
-    return DOMPurify.sanitize(rawHtml);
-  } catch (error) {
-    console.error('Error parsing markdown:', error);
-    return text;
-  }
 };
 </script>
 
@@ -792,7 +739,36 @@ const formatMarkdown = (text) => {
 }
 
 .chat-bubble {
-  padding: 12px 16px;
+  max-width: 70%; /* Adjusted to provide better readability in a wider container */
+  border-radius: 16px;
+  padding: 16px 20px;
+  position: relative;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  animation: fadeIn 0.5s ease forwards;
+  opacity: 0;
+}
+
+/* Chat input container also needs adjustment for wider display */
+.chat-container.chat-mode .chat-input-container {
+  padding: 25px 40px; /* Increased padding for better spacing */
+}
+
+.chat-messages::-webkit-scrollbar {
+  width: 5px;
+}
+
+.chat-messages::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 10px;
+}
+
+.chat-messages::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
+}
+
+.chat-bubble {
+  padding: 12px;
   border-radius: 16px;
   word-wrap: break-word;
   box-shadow: 0px 0px 3px rgba(123, 123, 123, 0.10);
@@ -823,7 +799,6 @@ const formatMarkdown = (text) => {
   align-self: flex-start;
   background: white;
   color: #323232;
-  padding: 16px 20px;
 }
 
 .thinking-state {
@@ -952,144 +927,21 @@ const formatMarkdown = (text) => {
 }
 
 .message-content {
+  display: flex;
+  flex-direction: column;
   font-family: 'DM Sans', sans-serif;
   width: 100%;
-  overflow-wrap: break-word;
-  word-break: break-word;
-}
-
-.message-content > *:first-child {
-  margin-top: 0;
-}
-
-.message-content > *:last-child {
-  margin-bottom: 0;
-}
-
-/* Style for user messages (no markdown formatting) */
-.user-message .message-content div {
-  margin: 0;
-}
-
-/* Additional styles for markdown content in chat bubbles */
-.system-message .message-content {
-  font-family: 'DM Sans', sans-serif;
-}
-
-.system-message .message-content h1,
-.system-message .message-content h2,
-.system-message .message-content h3,
-.system-message .message-content h4,
-.system-message .message-content h5,
-.system-message .message-content h6 {
-  margin-top: 16px;
-  margin-bottom: 8px;
-  font-weight: 600;
-  line-height: 1.25;
-}
-
-.system-message .message-content h1 {
-  font-size: 1.5em;
-}
-
-.system-message .message-content h2 {
-  font-size: 1.3em;
-}
-
-.system-message .message-content h3 {
-  font-size: 1.15em;
-}
-
-.system-message .message-content p {
-  margin: 8px 0;
-}
-
-.system-message .message-content ul,
-.system-message .message-content ol {
-  padding-left: 20px;
-  margin: 8px 0;
-  box-sizing: border-box;
-  width: 100%;
-}
-
-.system-message .message-content li {
-  margin: 4px 0;
-  padding-left: 4px;
-}
-
-.system-message .message-content li > * {
-  margin: 4px 0;
-}
-
-.system-message .message-content pre {
-  background-color: rgba(0, 0, 0, 0.05);
-  border-radius: 6px;
-  padding: 12px;
-  overflow-x: auto;
-  margin: 10px 0;
   max-width: 100%;
-  box-sizing: border-box;
 }
 
-.system-message .message-content code {
-  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-  background-color: rgba(0, 0, 0, 0.05);
-  padding: 2px 4px;
-  border-radius: 4px;
-  font-size: 0.9em;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-.system-message .message-content pre code {
-  background-color: transparent;
-  padding: 0;
-  border-radius: 0;
-  font-size: 0.9em;
-  white-space: pre;
-  overflow-x: auto;
-  tab-size: 2;
-}
-
-.system-message .message-content blockquote {
-  border-left: 4px solid rgba(0, 0, 0, 0.1);
-  padding-left: 12px;
-  margin: 12px 0;
-  color: #555;
-  box-sizing: border-box;
-  width: calc(100% - 12px);
-}
-
-.system-message .message-content a {
-  color: #0366d6;
-  text-decoration: none;
-}
-
-.system-message .message-content a:hover {
-  text-decoration: underline;
-}
-
-.system-message .message-content table {
-  border-collapse: collapse;
-  width: 100%;
-  margin: 12px 0;
-  font-size: 0.9em;
-  box-sizing: border-box;
-  display: block;
-  overflow-x: auto;
-}
-
-.system-message .message-content table th,
-.system-message .message-content table td {
-  border: 1px solid #ddd;
-  padding: 8px;
-  text-align: left;
-  min-width: 100px;
-}
-
-.system-message .message-content table th {
-  background-color: rgba(0, 0, 0, 0.05);
-  font-weight: 600;
+.message-content p {
+  margin: 0;
+  color: #323232;
+  font-size: 14px;
+  font-family: 'DM Sans';
+  font-weight: 400;
+  line-height: 20px;
+  word-wrap: break-word;
 }
 
 .message-time {
@@ -1764,104 +1616,75 @@ const formatMarkdown = (text) => {
   }
 }
 
-/* Replace the provider-selector styles with dropdown styles */
-.ai-dropdown-container {
-  position: relative;
-  z-index: 1000;
-}
-
-.ai-dropdown-toggle {
+/* Add styles for AI provider selection */
+.ai-providers {
   display: flex;
   align-items: center;
-  background-color: rgba(237, 237, 237, 0.5);
-  border: none;
-  border-radius: 16px;
-  padding: 6px 10px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  gap: 4px;
+  padding: 4px 0;
+  margin-bottom: 8px;
+  font-family: 'DM Sans', sans-serif;
 }
 
-.ai-dropdown-toggle:hover, .ai-dropdown-toggle.active {
-  background-color: rgba(220, 220, 220, 0.7);
+.providers-label {
+  font-size: 14px;
+  color: #676767;
+  margin-right: 12px;
+  white-space: nowrap;
 }
 
-.current-provider-icon {
+.provider-options {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #555;
-}
-
-.dropdown-arrow {
-  transition: transform 0.2s ease;
-}
-
-.ai-dropdown-toggle.active .dropdown-arrow {
-  transform: rotate(180deg);
-}
-
-.ai-dropdown-menu {
-  position: absolute;
-  bottom: 100%;
-  right: 0;
-  margin-bottom: 4px;
-  background-color: white;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  width: 140px;
-  overflow: hidden;
-  animation: dropdownFadeIn 0.2s ease;
-}
-
-.ai-dropdown-item {
-  display: flex;
-  align-items: center;
-  padding: 10px 12px;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
   gap: 8px;
 }
 
-.ai-dropdown-item:hover {
-  background-color: rgba(0, 0, 0, 0.05);
-}
-
-.ai-dropdown-item.selected {
-  background-color: rgba(37, 123, 223, 0.1);
+.provider-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background-color: rgba(237, 237, 237, 0.7);
+  border-radius: 384px;
+  padding: 6px 12px;
+  font-family: 'DM Sans', sans-serif;
   font-weight: 500;
+  font-size: 14px;
+  color: #676767;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-.ai-dropdown-item .provider-icon {
+.provider-pill.active {
+  background-color: rgba(37, 123, 223, 0.9);
+  color: #FFFFFF;
+}
+
+.provider-pill:hover {
+  opacity: 0.9;
+  transform: translateY(-2px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.provider-icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #555;
 }
 
-.ai-dropdown-item.selected .provider-icon {
-  color: rgba(37, 123, 223, 0.9);
-}
-
-/* Animation for dropdown */
-@keyframes dropdownFadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
+/* Make sure provider pills stay visible on mobile */
+@media (max-width: 480px) {
+  .ai-providers {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
   }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+  
+  .provider-options {
+    width: 100%;
+    justify-content: space-between;
   }
-}
-
-/* Remove the old provider selector styles that are no longer needed */
-.provider-selector {
-  display: none;
-}
-
-/* Remove the old AI providers section that was below the input */
-.ai-providers {
-  display: none;
+  
+  .provider-pill {
+    flex: 1;
+    justify-content: center;
+  }
 }
 </style> 
