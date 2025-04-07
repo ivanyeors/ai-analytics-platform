@@ -28,7 +28,7 @@ try {
 
   // Create Express app
   const app = express();
-  const port = process.env.PORT || 3001;
+  const port = 3001; // Always use port 3001, no fallback
 
   console.log('Configured port:', port);
 
@@ -79,39 +79,24 @@ try {
     });
   });
 
-  // Function to start the server with port fallback
-  const startServer = (initialPort) => {
-    console.log(`Attempting to start server on port ${initialPort}...`);
+  // Function to start the server on port 3001
+  const startServer = () => {
+    console.log(`Starting server on port ${port}...`);
     
     // Explicitly binding to 0.0.0.0 to listen on all available network interfaces
-    const server = app.listen(initialPort, '0.0.0.0')
+    const server = app.listen(port, '0.0.0.0')
       .on('listening', () => {
-        const addr = server.address();
-        console.log('Server address:', addr);
-        const actualPort = addr.port;
-        console.log(`API server listening on all interfaces (0.0.0.0) on port ${actualPort}`);
-        console.log(`API routes available at: http://localhost:${actualPort}/api/ai/chat`);
-        
-        // If we're using a different port than expected, provide instructions
-        if (actualPort !== port) {
-          console.log('\n⚠️  Note: Server started on a different port than configured!');
-          console.log(`If using Vue.js frontend, update the proxy in vue.config.js to target: 'http://localhost:${actualPort}'`);
-        }
+        console.log(`API server listening on all interfaces (0.0.0.0) on port ${port}`);
+        console.log(`API routes available at: http://localhost:${port}/api/ai/chat`);
       })
       .on('error', (err) => {
-        if (err.code === 'EADDRINUSE') {
-          console.log(`⚠️  Port ${initialPort} is already in use, trying alternative port...`);
-          // Try a different port (incrementing by 10 to avoid conflicts)
-          startServer(initialPort + 10);
-        } else {
-          console.error('Failed to start server:', err);
-          process.exit(1);
-        }
+        console.error('Failed to start server:', err);
+        process.exit(1);
       });
   };
 
-  // Start the server with the configured port
-  startServer(port);
+  // Start the server
+  startServer();
 } catch (error) {
   console.error('Fatal error during server initialization:', error);
   process.exit(1);
